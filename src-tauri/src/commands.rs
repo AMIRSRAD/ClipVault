@@ -155,6 +155,22 @@ pub fn close_palette(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn open_main_window(app: AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    window.show().map_err(|error| error.to_string())?;
+    window.unminimize().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())?;
+
+    if let Some(palette) = app.get_webview_window("palette") {
+        palette.hide().map_err(|error| error.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 pub fn start_palette_drag(app: AppHandle) -> Result<(), String> {
     let window = app
         .get_webview_window("palette")

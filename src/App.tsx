@@ -19,6 +19,7 @@ import {
   Search,
   Settings,
   Shield,
+  SquareArrowOutUpRight,
   Sparkles,
   Tags,
   Trash2,
@@ -36,6 +37,7 @@ import {
   getItem,
   getSettings,
   importBackup,
+  openMainWindow,
   openExternal,
   pasteItem,
   pauseCapture,
@@ -866,9 +868,14 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
       <div className={embedded ? "palette-panel embedded" : "palette-panel"}>
         <div className="palette-titlebar" onMouseDown={(event) => startPaletteDrag(event, embedded)}>
           <strong>ClipVault</strong>
-          <button className="palette-close" onClick={onClose} title="Close">
-            <X size={17} />
-          </button>
+          <div className="palette-window-actions">
+            <button className="palette-title-button" onClick={() => openMainWindow()} title="Open ClipVault">
+              <SquareArrowOutUpRight size={15} />
+            </button>
+            <button className="palette-close" onClick={onClose} title="Close">
+              <X size={17} />
+            </button>
+          </div>
         </div>
         <div className="palette-tabs">
           <button className={mode === "all" ? "active" : ""} onClick={() => setMode("all")} title="All clips (Alt+1)">

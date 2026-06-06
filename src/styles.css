@@ -769,7 +769,15 @@ textarea:focus-visible,
   font-weight: 700;
 }
 
-.palette-close {
+.palette-window-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.palette-close,
+.palette-title-button {
   display: grid;
   place-items: center;
   width: 30px;
@@ -781,7 +789,8 @@ textarea:focus-visible,
   -webkit-app-region: no-drag;
 }
 
-.palette-close:hover {
+.palette-close:hover,
+.palette-title-button:hover {
   background: var(--popup-icon-hover);
 }
 

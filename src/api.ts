@@ -113,6 +113,11 @@ export async function closePalette(): Promise<void> {
   await invoke("close_palette");
 }
 
+export async function openMainWindow(): Promise<void> {
+  if (!isTauri()) return;
+  await invoke("open_main_window");
+}
+
 export async function startPaletteDrag(): Promise<void> {
   if (!isTauri()) return;
   await invoke("start_palette_drag");

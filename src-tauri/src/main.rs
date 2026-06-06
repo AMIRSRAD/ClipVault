@@ -64,6 +64,7 @@ pub fn run() {
             commands::import_backup,
             commands::open_external,
             commands::close_palette,
+            commands::open_main_window,
             commands::start_palette_drag
         ])
         .setup(|app| {
