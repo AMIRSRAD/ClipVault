@@ -871,6 +871,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
           <div className="palette-window-actions">
             <button className="palette-title-button" onClick={() => openMainWindow()} title="Open ClipVault">
               <SquareArrowOutUpRight size={15} />
+              <span>Open app</span>
             </button>
             <button className="palette-close" onClick={onClose} title="Close">
               <X size={17} />

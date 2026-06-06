@@ -778,15 +778,28 @@ textarea:focus-visible,
 
 .palette-close,
 .palette-title-button {
-  display: grid;
-  place-items: center;
-  width: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   height: 30px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--text);
   -webkit-app-region: no-drag;
+}
+
+.palette-close {
+  width: 30px;
+}
+
+.palette-title-button {
+  width: auto;
+  padding: 0 8px;
+  color: color-mix(in srgb, var(--accent) 78%, var(--text));
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .palette-close:hover,
