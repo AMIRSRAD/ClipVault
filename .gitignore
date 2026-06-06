@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Frontend build output
+dist/
+dist-ssr/
+
+# Tauri and Rust build output
+src-tauri/target/
+target/
+src-tauri/gen/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+vite-dev.log
+vite-dev.err.log
+
+# Local environment
+.env
+.env.*
+*.local
+
+# Editors and OS metadata
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local ClipVault data and backups
+*.cvbackup
+*.sqlite
+*.sqlite3
+*.db
+*.db-*
+*.key
+
+# Generated installers and symbols, in case copied outside ignored target dirs
+*.msi
+*.exe
+*.pdb
+
+# Keep source icons and project config tracked.
+!src-tauri/icons/*.ico
+!src-tauri/icons/*.png
