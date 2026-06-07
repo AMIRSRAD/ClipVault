@@ -86,10 +86,16 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if window.label() == "palette" {
-                if let WindowEvent::Focused(false) = event {
+            if window.label() == "main" {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
                     let _ = window.hide();
                 }
+                return;
+            }
+
+            if window.label() == "palette" && matches!(event, WindowEvent::Focused(false)) {
+                let _ = window.hide();
             }
         })
         .run(tauri::generate_context!())
@@ -117,7 +123,9 @@ fn show_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.unminimize();
+        let _ = window.set_always_on_top(true);
         let _ = window.set_focus();
+        let _ = window.set_always_on_top(false);
     }
 
     if let Some(window) = app.get_webview_window("palette") {

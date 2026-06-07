@@ -161,7 +161,9 @@ pub fn open_main_window(app: AppHandle) -> Result<(), String> {
         .ok_or_else(|| "main window not found".to_string())?;
     window.show().map_err(|error| error.to_string())?;
     window.unminimize().map_err(|error| error.to_string())?;
+    window.set_always_on_top(true).map_err(|error| error.to_string())?;
     window.set_focus().map_err(|error| error.to_string())?;
+    window.set_always_on_top(false).map_err(|error| error.to_string())?;
 
     if let Some(palette) = app.get_webview_window("palette") {
         palette.hide().map_err(|error| error.to_string())?;
