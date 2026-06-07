@@ -14,7 +14,7 @@ use std::sync::Mutex;
 use clipboard::ClipboardWatcher;
 use chrono::{DateTime, Utc};
 use storage::Storage;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
 
@@ -37,6 +37,9 @@ impl AppState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app);
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -82,6 +85,13 @@ pub fn run() {
 
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if window.label() == "palette" {
+                if let WindowEvent::Focused(false) = event {
+                    let _ = window.hide();
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("failed to run ClipVault");
 }
@@ -100,6 +110,18 @@ fn show_palette(app: &AppHandle) {
         let _ = window.show();
         let _ = window.set_focus();
         let _ = window.emit("palette-opened", ());
+    }
+}
+
+fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+
+    if let Some(window) = app.get_webview_window("palette") {
+        let _ = window.hide();
     }
 }
 
