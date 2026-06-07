@@ -4,6 +4,10 @@ ClipVault is a modern lightweight Windows clipboard manager with encrypted local
 
 It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, lets you save reusable notes/snippets, and keeps all content local.
 
+## Screenshots
+
+![ClipVault main window](docs/assets/main-window.png)
+
 ![ClipVault quick paste popup](docs/assets/quick-paste-popup.png)
 
 ## Features
