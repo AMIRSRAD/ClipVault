@@ -75,6 +75,14 @@ pub struct AppSettings {
     pub excluded_title_patterns: Vec<String>,
     pub suppress_sensitive: bool,
     pub ocr_mode: String,
+    #[serde(default = "default_true")]
+    pub close_to_tray: bool,
+    #[serde(default = "default_true")]
+    pub minimize_to_tray: bool,
+    #[serde(default)]
+    pub start_minimized: bool,
+    #[serde(default)]
+    pub launch_on_startup: bool,
 }
 
 impl Default for AppSettings {
@@ -88,8 +96,16 @@ impl Default for AppSettings {
             excluded_title_patterns: vec!["password".into(), "secret".into(), "private key".into()],
             suppress_sensitive: true,
             ocr_mode: "onDemand".to_string(),
+            close_to_tray: true,
+            minimize_to_tray: true,
+            start_minimized: false,
+            launch_on_startup: false,
         }
     }
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

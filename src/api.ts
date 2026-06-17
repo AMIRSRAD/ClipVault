@@ -26,6 +26,14 @@ export async function pasteItem(id: string): Promise<void> {
   await invoke("paste_item", { id });
 }
 
+export async function pasteText(text: string): Promise<void> {
+  if (!isTauri()) {
+    await navigator.clipboard?.writeText(text);
+    return;
+  }
+  await invoke("paste_text", { text });
+}
+
 export async function deleteItem(id: string): Promise<void> {
   if (!isTauri()) return;
   await invoke("delete_item", { id });

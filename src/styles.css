@@ -499,6 +499,12 @@ textarea:focus-visible,
   background: var(--surface-hover);
 }
 
+.template-button.active {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 54%, var(--surface));
+  color: var(--text);
+}
+
 .detail-panel {
   padding: 18px;
 }
@@ -587,6 +593,27 @@ textarea:focus-visible,
 
 .smart-actions {
   margin-top: 12px;
+}
+
+.paste-transforms {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.paste-transforms > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.paste-transforms > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .smart-action-button {

@@ -11,9 +11,11 @@ mod storage;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use clipboard::ClipboardWatcher;
 use chrono::{DateTime, Utc};
+use clipboard::ClipboardWatcher;
 use storage::Storage;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
@@ -54,6 +56,7 @@ pub fn run() {
             commands::search_items,
             commands::get_item,
             commands::paste_item,
+            commands::paste_text,
             commands::delete_item,
             commands::pin_item,
             commands::set_tags,
@@ -73,11 +76,28 @@ pub fn run() {
         .setup(|app| {
             let storage = Storage::open()?;
             let state = AppState::new(storage);
-            let watcher = ClipboardWatcher::new(state.storage.clone(), state.pause_until.clone(), app.handle().clone());
+            let watcher = ClipboardWatcher::new(
+                state.storage.clone(),
+                state.pause_until.clone(),
+                app.handle().clone(),
+            );
             app.manage(state);
+            setup_tray(app.handle())?;
 
             let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyV);
             app.global_shortcut().register(shortcut)?;
+
+            if app
+                .state::<AppState>()
+                .storage
+                .settings()
+                .map(|settings| settings.start_minimized)
+                .unwrap_or(false)
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.hide();
+                }
+            }
 
             std::thread::spawn(move || {
                 watcher.run();
@@ -88,7 +108,29 @@ pub fn run() {
         .on_window_event(|window, event| {
             if window.label() == "main" {
                 if let WindowEvent::CloseRequested { api, .. } = event {
-                    api.prevent_close();
+                    if window
+                        .app_handle()
+                        .state::<AppState>()
+                        .storage
+                        .settings()
+                        .map(|settings| settings.close_to_tray)
+                        .unwrap_or(true)
+                    {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                }
+
+                if matches!(event, WindowEvent::Resized(_))
+                    && window
+                        .app_handle()
+                        .state::<AppState>()
+                        .storage
+                        .settings()
+                        .map(|settings| settings.minimize_to_tray)
+                        .unwrap_or(true)
+                    && window.is_minimized().unwrap_or(false)
+                {
                     let _ = window.hide();
                 }
                 return;
@@ -104,6 +146,76 @@ pub fn run() {
 
 fn main() {
     run();
+}
+
+fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
+    let open = MenuItem::with_id(app, "open", "Open ClipVault", true, None::<&str>)?;
+    let quick_paste = MenuItem::with_id(app, "quick_paste", "Quick Paste", true, None::<&str>)?;
+    let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+    let pause = MenuItem::with_id(app, "pause", "Pause capture", true, None::<&str>)?;
+    let resume = MenuItem::with_id(app, "resume", "Resume capture", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let separator_one = PredefinedMenuItem::separator(app)?;
+    let separator_two = PredefinedMenuItem::separator(app)?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &open,
+            &quick_paste,
+            &settings,
+            &separator_one,
+            &pause,
+            &resume,
+            &separator_two,
+            &quit,
+        ],
+    )?;
+
+    let mut builder = TrayIconBuilder::with_id("main-tray")
+        .tooltip("ClipVault")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "open" => show_main_window(app),
+            "quick_paste" => show_palette(app),
+            "settings" => {
+                show_main_window(app);
+                let _ = app.emit("open-settings", ());
+            }
+            "pause" => {
+                if let Some(state) = app.try_state::<AppState>() {
+                    if let Ok(mut pause_until) = state.pause_until.lock() {
+                        *pause_until = Some(Utc::now() + chrono::Duration::days(3650));
+                    }
+                }
+            }
+            "resume" => {
+                if let Some(state) = app.try_state::<AppState>() {
+                    if let Ok(mut pause_until) = state.pause_until.lock() {
+                        *pause_until = None;
+                    }
+                }
+            }
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        });
+
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+
+    builder.build(app)?;
+    Ok(())
 }
 
 fn show_palette(app: &AppHandle) {

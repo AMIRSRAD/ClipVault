@@ -13,7 +13,10 @@ use uuid::Uuid;
 
 use crate::{
     crypto,
-    models::{AppSettings, ClipboardFilters, ClipboardItem, ClipboardKind, NewClipboardItem, SearchResponse},
+    models::{
+        AppSettings, ClipboardFilters, ClipboardItem, ClipboardKind, NewClipboardItem,
+        SearchResponse,
+    },
 };
 
 pub struct Storage {
@@ -50,7 +53,8 @@ struct BackupItem {
 impl Storage {
     pub fn open() -> Result<Self> {
         let dir = app_data_dir()?;
-        std::fs::create_dir_all(&dir).with_context(|| format!("failed to create app data dir {}", dir.display()))?;
+        std::fs::create_dir_all(&dir)
+            .with_context(|| format!("failed to create app data dir {}", dir.display()))?;
         let key = crypto::load_or_create_database_key(&dir.join("clipvault.key"))?;
         let db_path = dir.join("clipvault.db");
         let connection = Connection::open(db_path)?;
@@ -69,7 +73,9 @@ impl Storage {
 
     fn settings_locked(&self, conn: &Connection) -> Result<AppSettings> {
         let raw: Option<String> = conn
-            .query_row("SELECT value FROM settings WHERE key = 'app'", [], |row| row.get(0))
+            .query_row("SELECT value FROM settings WHERE key = 'app'", [], |row| {
+                row.get(0)
+            })
             .optional()?;
 
         raw.map(|value| serde_json::from_str(&value).context("failed to parse settings"))
@@ -108,7 +114,8 @@ impl Storage {
                     text: row.get(2)?,
                     ocr_text: row.get(3)?,
                     image_blob: image_blob.map(|bytes| general_purpose::STANDARD.encode(bytes)),
-                    thumbnail_blob: thumbnail_blob.map(|bytes| general_purpose::STANDARD.encode(bytes)),
+                    thumbnail_blob: thumbnail_blob
+                        .map(|bytes| general_purpose::STANDARD.encode(bytes)),
                     source_app: row.get(6)?,
                     source_title: row.get(7)?,
                     hash: row.get(8)?,
@@ -129,7 +136,10 @@ impl Storage {
             items,
         };
         let protected = crypto::protect(&serde_json::to_vec(&payload)?)?;
-        Ok(format!("clipvault-dpapi-v1:{}", general_purpose::STANDARD.encode(protected)))
+        Ok(format!(
+            "clipvault-dpapi-v1:{}",
+            general_purpose::STANDARD.encode(protected)
+        ))
     }
 
     pub fn import_backup(&self, backup: &str) -> Result<usize> {
@@ -190,9 +200,17 @@ impl Storage {
                 ],
             )?;
             tx.execute("DELETE FROM item_tags WHERE item_id = ?1", [&item.id])?;
-            for tag in item.tags.iter().map(|tag| tag.trim().to_lowercase()).filter(|tag| !tag.is_empty()) {
+            for tag in item
+                .tags
+                .iter()
+                .map(|tag| tag.trim().to_lowercase())
+                .filter(|tag| !tag.is_empty())
+            {
                 tx.execute("INSERT OR IGNORE INTO tags(name) VALUES(?1)", [&tag])?;
-                tx.execute("INSERT OR IGNORE INTO item_tags(item_id, tag_name) VALUES(?1, ?2)", params![&item.id, tag])?;
+                tx.execute(
+                    "INSERT OR IGNORE INTO item_tags(item_id, tag_name) VALUES(?1, ?2)",
+                    params![&item.id, tag],
+                )?;
             }
         }
         tx.commit()?;
@@ -208,10 +226,17 @@ impl Storage {
         let conn = self.conn()?;
 
         let existing: Option<String> = conn
-            .query_row("SELECT id FROM clipboard_items WHERE hash = ?1", [&item.hash], |row| row.get(0))
+            .query_row(
+                "SELECT id FROM clipboard_items WHERE hash = ?1",
+                [&item.hash],
+                |row| row.get(0),
+            )
             .optional()?;
         if let Some(id) = existing {
-            conn.execute("UPDATE clipboard_items SET created_at = ?1 WHERE id = ?2", params![Utc::now().to_rfc3339(), id])?;
+            conn.execute(
+                "UPDATE clipboard_items SET created_at = ?1 WHERE id = ?2",
+                params![Utc::now().to_rfc3339(), id],
+            )?;
             return Ok(None);
         }
 
@@ -248,7 +273,10 @@ impl Storage {
 
     pub fn create_note(&self, text: String, tags: Vec<String>) -> Result<ClipboardItem> {
         let normalized = crate::privacy::normalize_text(&text);
-        let hash = crate::privacy::hash_bytes("note", format!("{}:{}", uuid::Uuid::new_v4(), normalized).as_bytes());
+        let hash = crate::privacy::hash_bytes(
+            "note",
+            format!("{}:{}", uuid::Uuid::new_v4(), normalized).as_bytes(),
+        );
         let id = self
             .insert_item(NewClipboardItem {
                 kind: ClipboardKind::Note,
@@ -262,7 +290,8 @@ impl Storage {
             })?
             .ok_or_else(|| anyhow::anyhow!("failed to create note"))?;
         self.set_tags(&id, tags)?;
-        self.get(&id)?.ok_or_else(|| anyhow::anyhow!("created note not found"))
+        self.get(&id)?
+            .ok_or_else(|| anyhow::anyhow!("created note not found"))
     }
 
     pub fn update_note(&self, id: &str, text: String) -> Result<ClipboardItem> {
@@ -279,10 +308,17 @@ impl Storage {
         }
         self.reindex_item(&conn, id)?;
         drop(conn);
-        self.get(id)?.ok_or_else(|| anyhow::anyhow!("note not found"))
+        self.get(id)?
+            .ok_or_else(|| anyhow::anyhow!("note not found"))
     }
 
-    pub fn search(&self, query: String, filters: ClipboardFilters, limit: i64, offset: i64) -> Result<SearchResponse> {
+    pub fn search(
+        &self,
+        query: String,
+        filters: ClipboardFilters,
+        limit: i64,
+        offset: i64,
+    ) -> Result<SearchResponse> {
         let conn = self.conn()?;
         let query = query.trim().to_string();
         let ids = if query.is_empty() {
@@ -307,9 +343,13 @@ impl Storage {
 
     pub fn image_blob(&self, id: &str) -> Result<Option<Vec<u8>>> {
         let conn = self.conn()?;
-        conn.query_row("SELECT image_blob FROM clipboard_items WHERE id = ?1 AND kind = 'image'", [id], |row| row.get(0))
-            .optional()
-            .map_err(Into::into)
+        conn.query_row(
+            "SELECT image_blob FROM clipboard_items WHERE id = ?1 AND kind = 'image'",
+            [id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(Into::into)
     }
 
     pub fn delete(&self, id: &str) -> Result<()> {
@@ -322,7 +362,10 @@ impl Storage {
 
     pub fn pin(&self, id: &str, pinned: bool) -> Result<()> {
         let conn = self.conn()?;
-        conn.execute("UPDATE clipboard_items SET pinned = ?1 WHERE id = ?2", params![pinned, id])?;
+        conn.execute(
+            "UPDATE clipboard_items SET pinned = ?1 WHERE id = ?2",
+            params![pinned, id],
+        )?;
         Ok(())
     }
 
@@ -330,9 +373,16 @@ impl Storage {
         let conn = self.conn()?;
         let tx = conn.unchecked_transaction()?;
         tx.execute("DELETE FROM item_tags WHERE item_id = ?1", [id])?;
-        for tag in tags.into_iter().map(|tag| tag.trim().to_lowercase()).filter(|tag| !tag.is_empty()) {
+        for tag in tags
+            .into_iter()
+            .map(|tag| tag.trim().to_lowercase())
+            .filter(|tag| !tag.is_empty())
+        {
             tx.execute("INSERT OR IGNORE INTO tags(name) VALUES(?1)", [&tag])?;
-            tx.execute("INSERT OR IGNORE INTO item_tags(item_id, tag_name) VALUES(?1, ?2)", params![id, tag])?;
+            tx.execute(
+                "INSERT OR IGNORE INTO item_tags(item_id, tag_name) VALUES(?1, ?2)",
+                params![id, tag],
+            )?;
         }
         tx.commit()?;
         self.reindex_item(&conn, id)?;
@@ -341,14 +391,20 @@ impl Storage {
 
     pub fn set_ocr_text(&self, id: &str, text: &str) -> Result<()> {
         let conn = self.conn()?;
-        conn.execute("UPDATE clipboard_items SET ocr_text = ?1 WHERE id = ?2", params![text, id])?;
+        conn.execute(
+            "UPDATE clipboard_items SET ocr_text = ?1 WHERE id = ?2",
+            params![text, id],
+        )?;
         self.reindex_item(&conn, id)?;
         Ok(())
     }
 
     pub fn mark_used(&self, id: &str) -> Result<()> {
         let conn = self.conn()?;
-        conn.execute("UPDATE clipboard_items SET last_used_at = ?1 WHERE id = ?2", params![Utc::now().to_rfc3339(), id])?;
+        conn.execute(
+            "UPDATE clipboard_items SET last_used_at = ?1 WHERE id = ?2",
+            params![Utc::now().to_rfc3339(), id],
+        )?;
         Ok(())
     }
 
@@ -421,7 +477,12 @@ impl Storage {
                     kind: ClipboardKind::try_from(kind_raw.as_str()).unwrap_or(ClipboardKind::Text),
                     text: row.get(2)?,
                     ocr_text: row.get(3)?,
-                    image_url: image_blob.map(|bytes| format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(bytes))),
+                    image_url: image_blob.map(|bytes| {
+                        format!(
+                            "data:image/png;base64,{}",
+                            general_purpose::STANDARD.encode(bytes)
+                        )
+                    }),
                     source_app: row.get(5)?,
                     source_title: row.get(6)?,
                     created_at: row.get(7)?,
@@ -437,7 +498,13 @@ impl Storage {
         .map_err(Into::into)
     }
 
-    fn search_ids_without_fts(&self, conn: &Connection, filters: &ClipboardFilters, limit: i64, offset: i64) -> Result<Vec<String>> {
+    fn search_ids_without_fts(
+        &self,
+        conn: &Connection,
+        filters: &ClipboardFilters,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<String>> {
         let mut rows = conn.prepare(
             "SELECT id FROM clipboard_items
              ORDER BY pinned DESC, datetime(created_at) DESC
@@ -451,7 +518,14 @@ impl Storage {
         Ok(ids)
     }
 
-    fn search_ids_with_fts(&self, conn: &Connection, query: &str, filters: &ClipboardFilters, limit: i64, offset: i64) -> Result<Vec<String>> {
+    fn search_ids_with_fts(
+        &self,
+        conn: &Connection,
+        query: &str,
+        filters: &ClipboardFilters,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<String>> {
         let escaped = query.replace('"', "\"\"");
         let fts_query = format!("\"{escaped}\"*");
         let mut stmt = conn.prepare(
@@ -463,14 +537,21 @@ impl Storage {
              LIMIT ?2 OFFSET ?3",
         )?;
         let ids = stmt
-            .query_map(params![fts_query, limit, offset], |row| row.get::<_, String>(0))?
+            .query_map(params![fts_query, limit, offset], |row| {
+                row.get::<_, String>(0)
+            })?
             .filter_map(Result::ok)
             .filter(|id| self.matches_filters(conn, id, filters).unwrap_or(false))
             .collect();
         Ok(ids)
     }
 
-    fn matches_filters(&self, conn: &Connection, id: &str, filters: &ClipboardFilters) -> Result<bool> {
+    fn matches_filters(
+        &self,
+        conn: &Connection,
+        id: &str,
+        filters: &ClipboardFilters,
+    ) -> Result<bool> {
         let Some(item) = self.get_locked(conn, id)? else {
             return Ok(false);
         };
@@ -499,9 +580,17 @@ impl Storage {
             "INSERT INTO items_fts(id, body, tags, source) VALUES(?1, ?2, ?3, ?4)",
             params![
                 item.id,
-                [item.text.unwrap_or_default(), item.ocr_text.unwrap_or_default()].join(" "),
+                [
+                    item.text.unwrap_or_default(),
+                    item.ocr_text.unwrap_or_default()
+                ]
+                .join(" "),
                 item.tags.join(" "),
-                [item.source_app.unwrap_or_default(), item.source_title.unwrap_or_default()].join(" ")
+                [
+                    item.source_app.unwrap_or_default(),
+                    item.source_title.unwrap_or_default()
+                ]
+                .join(" ")
             ],
         )?;
         Ok(())
@@ -522,7 +611,9 @@ impl Storage {
     }
 
     fn conn(&self) -> Result<MutexGuard<'_, Connection>> {
-        self.connection.lock().map_err(|_| anyhow::anyhow!("database lock poisoned"))
+        self.connection
+            .lock()
+            .map_err(|_| anyhow::anyhow!("database lock poisoned"))
     }
 
     #[cfg(test)]
@@ -536,26 +627,37 @@ impl Storage {
 }
 
 fn apply_cipher_key(connection: &Connection, key: &[u8]) -> Result<()> {
-    let key_hex = key.iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let key_hex = key
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
     connection.pragma_update(None, "key", format!("x'{key_hex}'"))?;
     Ok(())
 }
 
 fn app_data_dir() -> Result<PathBuf> {
-    let dirs = ProjectDirs::from("com", "ClipVault", "ClipVault").context("failed to resolve app data directory")?;
+    let dirs = ProjectDirs::from("com", "ClipVault", "ClipVault")
+        .context("failed to resolve app data directory")?;
     Ok(dirs.data_local_dir().to_path_buf())
 }
 
 fn tags_for_item(conn: &Connection, id: &str) -> rusqlite::Result<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT tag_name FROM item_tags WHERE item_id = ?1 ORDER BY tag_name")?;
-    let tags = stmt.query_map([id], |row| row.get::<_, String>(0))?.collect();
+    let mut stmt =
+        conn.prepare("SELECT tag_name FROM item_tags WHERE item_id = ?1 ORDER BY tag_name")?;
+    let tags = stmt
+        .query_map([id], |row| row.get::<_, String>(0))?
+        .collect();
     tags
 }
 
 fn decode_optional_blob(value: &Option<String>) -> Result<Option<Vec<u8>>> {
     value
         .as_deref()
-        .map(|encoded| general_purpose::STANDARD.decode(encoded).map_err(Into::into))
+        .map(|encoded| {
+            general_purpose::STANDARD
+                .decode(encoded)
+                .map_err(Into::into)
+        })
         .transpose()
 }
 
@@ -575,7 +677,9 @@ mod tests {
         assert_eq!(note.expires_at, None);
         assert_eq!(note.tags, vec!["ideas".to_string()]);
 
-        let updated = storage.update_note(&note.id, "updated note body".to_string()).expect("update note");
+        let updated = storage
+            .update_note(&note.id, "updated note body".to_string())
+            .expect("update note");
         assert_eq!(updated.text.as_deref(), Some("updated note body"));
 
         let response = storage
@@ -598,7 +702,9 @@ mod tests {
     #[test]
     fn retention_prune_does_not_delete_notes() {
         let storage = Storage::in_memory().expect("storage");
-        let note = storage.create_note("keep me".to_string(), vec![]).expect("create note");
+        let note = storage
+            .create_note("keep me".to_string(), vec![])
+            .expect("create note");
 
         {
             let conn = storage.conn().expect("conn");

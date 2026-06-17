@@ -40,6 +40,7 @@ import {
   openMainWindow,
   openExternal,
   pasteItem,
+  pasteText,
   pauseCapture,
   pinItem,
   runOcr,
@@ -53,6 +54,7 @@ import type { AppSettings, ClipboardFilters, ClipboardItem, OcrResponse } from "
 
 type ViewKey = "all" | "pinned" | "text" | "images" | "notes" | "tags" | "settings";
 type ViewGroup = "clipboard" | "saved" | "utility";
+type PasteTransform = "plain" | "trim" | "singleLine" | "upper" | "lower" | "title" | "jsonPretty" | "jsonMinify";
 
 const viewLabels: Array<{ key: ViewKey; label: string; icon: typeof Clipboard; group: ViewGroup }> = [
   { key: "all", label: "All", icon: Clipboard, group: "clipboard" },
@@ -86,22 +88,24 @@ const noteTemplates = [
   {
     label: "Prompt",
     icon: Sparkles,
-    tags: ["prompt"],
+    tags: ["prompts"],
     text: "Prompt\n\nContext:\n\nTask:\n\nConstraints:\n\nOutput:"
   },
   {
     label: "Email",
     icon: Mail,
-    tags: ["email"],
+    tags: ["emails"],
     text: "Subject:\n\nHi,\n\n\n\nBest,"
   }
 ] satisfies Array<{ label: string; icon: typeof Clipboard; tags: string[]; text: string }>;
 
-function filtersForView(view: ViewKey, tag: string | null): ClipboardFilters {
+const noteCollections = ["work", "code", "emails", "prompts", "personal"] as const;
+
+function filtersForView(view: ViewKey, tag: string | null, noteCollection: string | null): ClipboardFilters {
   if (view === "pinned") return { kind: "all", pinned: true };
   if (view === "text") return { kind: "text" };
   if (view === "images") return { kind: "image" };
-  if (view === "notes") return { kind: "note" };
+  if (view === "notes") return { kind: "note", tag: noteCollection };
   if (view === "tags") return { kind: "all", tag };
   return { kind: "all" };
 }
@@ -165,6 +169,25 @@ function beautifyCode(text: string): string {
     .trim();
 }
 
+function titleCase(text: string): string {
+  return text.toLowerCase().replace(/\b[\p{L}\p{N}]/gu, (char) => char.toUpperCase());
+}
+
+function transformText(text: string, transform: PasteTransform): string | null {
+  if (transform === "plain") return text;
+  if (transform === "trim") return text.trim();
+  if (transform === "singleLine") return text.replace(/\s*\r?\n\s*/g, " ").replace(/[ \t]{2,}/g, " ").trim();
+  if (transform === "upper") return text.toUpperCase();
+  if (transform === "lower") return text.toLowerCase();
+  if (transform === "title") return titleCase(text);
+
+  const parsed = formatJson(text);
+  if (!parsed) return null;
+  if (transform === "jsonPretty") return parsed;
+  if (transform === "jsonMinify") return JSON.stringify(JSON.parse(text));
+  return null;
+}
+
 function searchableText(item: ClipboardItem): string {
   return [previewText(item), item.sourceApp, item.sourceTitle, ...item.tags].filter(Boolean).join(" ").toLowerCase();
 }
@@ -223,6 +246,7 @@ function MainShell() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [noteCollection, setNoteCollection] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const tags = useMemo(() => [...new Set(items.flatMap((item) => item.tags))].sort(), [items]);
@@ -232,14 +256,14 @@ function MainShell() {
     setLoading(true);
     const response = await searchItems({
       query,
-      filters: filtersForView(view, selectedTag),
+      filters: filtersForView(view, selectedTag, noteCollection),
       limit: 100,
       offset: 0
     });
     setItems(response.items);
     setSelectedId((current) => (current && response.items.some((item) => item.id === current) ? current : response.items[0]?.id ?? null));
     setLoading(false);
-  }, [query, selectedTag, view]);
+  }, [noteCollection, query, selectedTag, view]);
 
   useEffect(() => {
     getSettings().then(setSettings);
@@ -248,6 +272,26 @@ function MainShell() {
   useEffect(() => {
     loadItems();
   }, [loadItems]);
+
+  useEffect(() => {
+    if (!("__TAURI_INTERNALS__" in window)) return;
+    let unlisten: (() => void) | undefined;
+
+    import("@tauri-apps/api/event")
+      .then(({ listen }) =>
+        listen("open-settings", () => {
+          setView("settings");
+          setSelectedTag(null);
+          setNoteCollection(null);
+        })
+      )
+      .then((cleanup) => {
+        unlisten = cleanup;
+      })
+      .catch(() => undefined);
+
+    return () => unlisten?.();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -293,7 +337,8 @@ function MainShell() {
   }
 
   async function handleCreateNote(template?: (typeof noteTemplates)[number]) {
-    const note = await createNote(template?.text ?? "", template?.tags ?? []);
+    const tags = template?.tags ?? (noteCollection ? [noteCollection] : []);
+    const note = await createNote(template?.text ?? "", tags);
     setView("notes");
     setItems((current) => [note, ...current]);
     setSelectedId(note.id);
@@ -320,6 +365,7 @@ function MainShell() {
               onClick={() => {
                 setView(key);
                 if (key !== "tags") setSelectedTag(null);
+                if (key !== "notes") setNoteCollection(null);
               }}
             >
               <Icon size={18} />
@@ -375,6 +421,21 @@ function MainShell() {
               )}
               {view === "notes" && (
                 <div className="note-template-row">
+                  <span>Saved snippet library</span>
+                  <div>
+                    <button className={noteCollection === null ? "template-button active" : "template-button"} onClick={() => setNoteCollection(null)}>
+                      All notes
+                    </button>
+                    {noteCollections.map((collection) => (
+                      <button
+                        key={collection}
+                        className={noteCollection === collection ? "template-button active" : "template-button"}
+                        onClick={() => setNoteCollection(collection)}
+                      >
+                        {collection}
+                      </button>
+                    ))}
+                  </div>
                   <span>Templates</span>
                   <div>
                     {noteTemplates.map((template) => {
@@ -539,6 +600,7 @@ function DetailPanel({
       {ocr && ocr.status !== "ready" && <div className={`ocr-status ${ocr.status}`}>{ocr.message}</div>}
 
       <SmartActions item={item} onApplyText={applyTextAction} onStatus={setActionStatus} />
+      <PasteTransformActions item={item} />
       {actionStatus && <div className="action-status">{actionStatus}</div>}
 
       <label className="field-label" htmlFor="tags">
@@ -641,6 +703,43 @@ function SmartActions({
   );
 }
 
+function PasteTransformActions({ item }: { item: ClipboardItem }) {
+  const text = smartText(item);
+  const hasJson = Boolean(formatJson(text));
+  if (!text.trim()) return null;
+
+  const actions: Array<{ key: PasteTransform; label: string; enabled?: boolean }> = [
+    { key: "plain", label: "Plain" },
+    { key: "trim", label: "Trim" },
+    { key: "singleLine", label: "No breaks" },
+    { key: "upper", label: "UPPER" },
+    { key: "lower", label: "lower" },
+    { key: "title", label: "Title" },
+    { key: "jsonPretty", label: "JSON pretty", enabled: hasJson },
+    { key: "jsonMinify", label: "JSON minify", enabled: hasJson }
+  ];
+
+  async function handlePaste(transform: PasteTransform) {
+    const transformed = transformText(text, transform);
+    if (transformed !== null) await pasteText(transformed);
+  }
+
+  return (
+    <div className="paste-transforms">
+      <span>Paste as</span>
+      <div>
+        {actions
+          .filter((action) => action.enabled !== false)
+          .map((action) => (
+            <button key={action.key} className="smart-action-button" onClick={() => handlePaste(action.key)}>
+              {action.label}
+            </button>
+          ))}
+      </div>
+    </div>
+  );
+}
+
 function SettingsPanel({ settings, onChange }: { settings: AppSettings; onChange: (settings: AppSettings) => void }) {
   const [backupStatus, setBackupStatus] = useState<string | null>(null);
 
@@ -683,6 +782,22 @@ function SettingsPanel({ settings, onChange }: { settings: AppSettings; onChange
         <label className="setting-row">
           <span>Suppress sensitive values</span>
           <input type="checkbox" checked={settings.suppressSensitive} onChange={(event) => patch({ suppressSensitive: event.target.checked })} />
+        </label>
+        <label className="setting-row">
+          <span>Close to tray</span>
+          <input type="checkbox" checked={settings.closeToTray} onChange={(event) => patch({ closeToTray: event.target.checked })} />
+        </label>
+        <label className="setting-row">
+          <span>Minimize to tray</span>
+          <input type="checkbox" checked={settings.minimizeToTray} onChange={(event) => patch({ minimizeToTray: event.target.checked })} />
+        </label>
+        <label className="setting-row">
+          <span>Start minimized</span>
+          <input type="checkbox" checked={settings.startMinimized} onChange={(event) => patch({ startMinimized: event.target.checked })} />
+        </label>
+        <label className="setting-row">
+          <span>Launch on Windows startup</span>
+          <input type="checkbox" checked={settings.launchOnStartup} onChange={(event) => patch({ launchOnStartup: event.target.checked })} />
         </label>
         <label className="setting-row">
           <span>Retention days</span>

@@ -12,11 +12,12 @@ use base64::Engine as _;
 use chrono::{DateTime, Utc};
 use image::{imageops::FilterType, DynamicImage, ImageBuffer, ImageFormat, Rgba};
 use tauri::AppHandle;
-use windows::Win32::UI::Input::KeyboardAndMouse::{
-    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_CONTROL, VK_V,
-};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::System::DataExchange::GetClipboardSequenceNumber;
+use windows::Win32::UI::Input::KeyboardAndMouse::{
+    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
+    VIRTUAL_KEY, VK_CONTROL, VK_V,
+};
 use windows::Win32::UI::WindowsAndMessaging::{IsWindow, SetForegroundWindow};
 
 use crate::{
@@ -32,7 +33,11 @@ pub struct ClipboardWatcher {
 }
 
 impl ClipboardWatcher {
-    pub fn new(storage: Arc<Storage>, pause_until: Arc<Mutex<Option<DateTime<Utc>>>>, app: AppHandle) -> Self {
+    pub fn new(
+        storage: Arc<Storage>,
+        pause_until: Arc<Mutex<Option<DateTime<Utc>>>>,
+        app: AppHandle,
+    ) -> Self {
         Self {
             storage,
             pause_until,
@@ -87,7 +92,9 @@ impl ClipboardWatcher {
         let settings = self.storage.settings()?;
         let source_app = active_window_app();
         let source_title = active_window_title();
-        if privacy::source_is_excluded(&source_app, &source_title, &settings) || !privacy::should_capture_text(&text, &settings) {
+        if privacy::source_is_excluded(&source_app, &source_title, &settings)
+            || !privacy::should_capture_text(&text, &settings)
+        {
             return Ok(());
         }
 
@@ -113,7 +120,9 @@ impl ClipboardWatcher {
         let source_title = active_window_title();
         let png = encode_rgba_png(image.width, image.height, image.bytes.as_ref())?;
 
-        if privacy::source_is_excluded(&source_app, &source_title, &settings) || !privacy::should_capture_image(png.len(), &settings) {
+        if privacy::source_is_excluded(&source_app, &source_title, &settings)
+            || !privacy::should_capture_image(png.len(), &settings)
+        {
             return Ok(());
         }
 
@@ -134,10 +143,13 @@ impl ClipboardWatcher {
 }
 
 pub fn paste_item(item: &ClipboardItem, target_hwnd: Option<isize>) -> Result<()> {
-    let mut clipboard = Clipboard::new().context("failed to open clipboard")?;
     if let Some(text) = &item.text {
-        clipboard.set_text(text.clone())?;
-    } else if let Some(image_url) = &item.image_url {
+        return paste_text(text, target_hwnd);
+    }
+
+    let mut clipboard = Clipboard::new().context("failed to open clipboard")?;
+    let previous = ClipboardContent::capture(&mut clipboard);
+    if let Some(image_url) = &item.image_url {
         let png = image_url
             .strip_prefix("data:image/png;base64,")
             .context("image item is missing PNG data")?;
@@ -157,7 +169,58 @@ pub fn paste_item(item: &ClipboardItem, target_hwnd: Option<isize>) -> Result<()
     focus_target_window(target_hwnd);
     std::thread::sleep(StdDuration::from_millis(90));
     send_ctrl_v();
+    std::thread::sleep(StdDuration::from_millis(450));
+    previous.restore(&mut clipboard);
     Ok(())
+}
+
+pub fn paste_text(text: &str, target_hwnd: Option<isize>) -> Result<()> {
+    let mut clipboard = Clipboard::new().context("failed to open clipboard")?;
+    let previous = ClipboardContent::capture(&mut clipboard);
+    clipboard.set_text(text.to_string())?;
+
+    focus_target_window(target_hwnd);
+    std::thread::sleep(StdDuration::from_millis(90));
+    send_ctrl_v();
+    std::thread::sleep(StdDuration::from_millis(450));
+    previous.restore(&mut clipboard);
+    Ok(())
+}
+
+enum ClipboardContent {
+    Text(String),
+    Image(ImageData<'static>),
+    Empty,
+}
+
+impl ClipboardContent {
+    fn capture(clipboard: &mut Clipboard) -> Self {
+        if let Ok(text) = clipboard.get_text() {
+            return Self::Text(text);
+        }
+
+        if let Ok(image) = clipboard.get_image() {
+            return Self::Image(ImageData {
+                width: image.width,
+                height: image.height,
+                bytes: Cow::Owned(image.bytes.into_owned()),
+            });
+        }
+
+        Self::Empty
+    }
+
+    fn restore(self, clipboard: &mut Clipboard) {
+        match self {
+            Self::Text(text) => {
+                let _ = clipboard.set_text(text);
+            }
+            Self::Image(image) => {
+                let _ = clipboard.set_image(image);
+            }
+            Self::Empty => {}
+        }
+    }
 }
 
 fn focus_target_window(target_hwnd: Option<isize>) {

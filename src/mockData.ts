@@ -85,7 +85,11 @@ export const demoSettings: AppSettings = {
   excludedApps: ["1Password.exe", "KeePassXC.exe"],
   excludedTitlePatterns: ["password", "secret", "private key"],
   suppressSensitive: true,
-  ocrMode: "onDemand"
+  ocrMode: "onDemand",
+  closeToTray: true,
+  minimizeToTray: true,
+  startMinimized: false,
+  launchOnStartup: false
 };
 
 export function mockSearch(query: string, filters: ClipboardFilters, limit: number, offset: number): SearchResponse {

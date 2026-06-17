@@ -29,6 +29,7 @@ The quick paste popup groups saved notes separately from clipboard captures and 
 - `src-tauri/src/privacy.rs` normalizes content, hashes entries, and suppresses likely sensitive values.
 - `src-tauri/src/ocr.rs` provides on-demand Windows OCR.
 - `src-tauri/src/crypto.rs` manages SQLCipher key material and DPAPI protection.
+- `src-tauri/src/main.rs` also owns tray menu setup, single-instance relaunch behavior, and close/minimize-to-tray window handling.
 
 ## Storage
 
@@ -41,6 +42,8 @@ Item kinds:
 - `note`
 
 Notes are manual saved snippets. They do not expire during normal retention pruning. Clipboard captures expire according to retention settings unless pinned.
+
+Saved snippet collections are represented as ordinary tags. The frontend treats `work`, `code`, `emails`, `prompts`, and `personal` as first-class collection filters without adding a separate table.
 
 Search indexing uses SQLite FTS over text, OCR text, tags, source app, and source title.
 
@@ -58,9 +61,11 @@ Current Windows integration includes:
 - Text/image capture.
 - Global shortcut: `Ctrl+Shift+V`.
 - Popup window display and native dragging.
-- Paste simulation through temporary clipboard replacement and `Ctrl+V`.
+- Paste simulation through temporary clipboard replacement and `Ctrl+V`, followed by best-effort restoration of the previous text or image clipboard content.
 - Windows OCR for copied images/screenshots.
 - Opening URLs and file paths through ShellExecute.
+- System tray menu for Open, Quick Paste, Settings, Pause capture, Resume capture, and Quit.
+- Windows startup registration through the current user's Run registry key.
 
 ## Push Notes
 

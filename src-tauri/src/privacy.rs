@@ -33,7 +33,11 @@ pub fn should_capture_image(size_bytes: usize, settings: &AppSettings) -> bool {
     settings.capture_enabled && size_bytes > 0 && size_bytes <= MAX_IMAGE_CAPTURE_BYTES
 }
 
-pub fn source_is_excluded(app: &Option<String>, title: &Option<String>, settings: &AppSettings) -> bool {
+pub fn source_is_excluded(
+    app: &Option<String>,
+    title: &Option<String>,
+    settings: &AppSettings,
+) -> bool {
     let app_name = app.as_deref().unwrap_or_default().to_lowercase();
     let title_value = title.as_deref().unwrap_or_default().to_lowercase();
 
@@ -55,12 +59,19 @@ pub fn looks_sensitive(text: &str) -> bool {
         return true;
     }
 
-    if lower.contains("password=") || lower.contains("passwd=") || lower.contains("api_key=") || lower.contains("secret=") {
+    if lower.contains("password=")
+        || lower.contains("passwd=")
+        || lower.contains("api_key=")
+        || lower.contains("secret=")
+    {
         return true;
     }
 
     let compact = trimmed.replace(['-', '_', ' '], "");
-    compact.len() >= 32 && compact.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '.' || ch == '/')
+    compact.len() >= 32
+        && compact
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '.' || ch == '/')
 }
 
 #[cfg(test)]
@@ -74,11 +85,15 @@ mod tests {
 
     #[test]
     fn suppresses_private_keys() {
-        assert!(looks_sensitive("-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----"));
+        assert!(looks_sensitive(
+            "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----"
+        ));
     }
 
     #[test]
     fn suppresses_long_tokens() {
-        assert!(looks_sensitive("exampletokenabcdefghijklmnopqrstuvwxyz1234567890"));
+        assert!(looks_sensitive(
+            "exampletokenabcdefghijklmnopqrstuvwxyz1234567890"
+        ));
     }
 }

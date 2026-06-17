@@ -16,7 +16,10 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
 - Searchable timeline with source metadata, tags, pins, and SQLite FTS indexing.
 - Windows-style quick paste popup with draggable dark UI, keyboard navigation, fuzzy search, and grouped clipboard/notes results.
 - Default global shortcut: `Ctrl+Shift+V`.
+- System tray menu for opening ClipVault, opening quick paste, pausing/resuming capture, opening Settings, and quitting.
+- Window behavior settings for close-to-tray, minimize-to-tray, start minimized, and launch on Windows startup.
 - Notes as saved snippets, stored in the same encrypted item system as clipboard entries.
+- Saved snippet collections backed by tags: work, code, emails, prompts, and personal.
 - Favorite note templates: meeting note, todo, code snippet, prompt, and email reply.
 - On-demand local OCR for copied screenshots and image clips using Windows native OCR APIs.
 - Smart preview actions for detected content:
@@ -26,7 +29,9 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
   - beautify code
   - extract emails
   - open Windows file path
+- Paste transformations for text: plain, trim, no line breaks, upper/lower/title case, JSON prettify, and JSON minify.
 - Privacy controls for capture pause, excluded apps/window titles, sensitive-value suppression, and retention.
+- Clipboard restore after quick paste for text and images when the prior clipboard content can be read.
 - Encrypted import/export for settings, notes, and pinned clips.
 - Windows GUI release build, so launching the app does not open a console window.
 

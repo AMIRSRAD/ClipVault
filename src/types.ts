@@ -31,6 +31,10 @@ export type AppSettings = {
   excludedTitlePatterns: string[];
   suppressSensitive: boolean;
   ocrMode: "onDemand" | "disabled";
+  closeToTray: boolean;
+  minimizeToTray: boolean;
+  startMinimized: boolean;
+  launchOnStartup: boolean;
 };
 
 export type SearchResponse = {
