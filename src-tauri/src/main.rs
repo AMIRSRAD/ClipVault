@@ -16,7 +16,7 @@ use clipboard::ClipboardWatcher;
 use storage::Storage;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewWindow, WindowEvent};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
 
@@ -222,13 +222,40 @@ fn show_palette(app: &AppHandle) {
     remember_paste_target(app);
 
     if let Some(window) = app.get_webview_window("palette") {
-        let _ = window.center();
         let _ = window.unminimize();
         let _ = window.set_always_on_top(true);
+        position_palette_bottom_center(&window);
         let _ = window.show();
         let _ = window.set_focus();
         let _ = window.emit("palette-opened", ());
     }
+}
+
+fn position_palette_bottom_center(window: &WebviewWindow) {
+    let Ok(window_size) = window.outer_size() else {
+        let _ = window.center();
+        return;
+    };
+
+    let monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| window.primary_monitor().ok().flatten());
+
+    let Some(monitor) = monitor else {
+        let _ = window.center();
+        return;
+    };
+
+    let work_area = monitor.work_area();
+    let horizontal_space = work_area.size.width as i32 - window_size.width as i32;
+    let vertical_space = work_area.size.height as i32 - window_size.height as i32;
+    let bottom_gap = 56;
+    let x = work_area.position.x + (horizontal_space / 2).max(0);
+    let y = work_area.position.y + (vertical_space - bottom_gap).max(0);
+
+    let _ = window.set_position(PhysicalPosition::new(x, y));
 }
 
 fn show_main_window(app: &AppHandle) {

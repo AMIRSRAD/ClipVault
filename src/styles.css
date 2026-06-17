@@ -760,6 +760,7 @@ textarea:focus-visible,
 }
 
 .palette-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: min(370px, 100vw);
@@ -778,6 +779,17 @@ textarea:focus-visible,
   max-height: none;
   border-radius: 0;
   box-shadow: none;
+}
+
+.palette-drag-strip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  height: 8px;
+  cursor: move;
+  -webkit-app-region: drag;
 }
 
 .palette-titlebar {

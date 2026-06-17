@@ -981,6 +981,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
   return (
     <div className={embedded ? "palette-root embedded" : "palette-backdrop"}>
       <div className={embedded ? "palette-panel embedded" : "palette-panel"}>
+        <div className="palette-drag-strip" onMouseDown={(event) => startPaletteDrag(event, embedded)} />
         <div className="palette-titlebar" onMouseDown={(event) => startPaletteDrag(event, embedded)}>
           <strong>ClipVault</strong>
           <div className="palette-window-actions">
