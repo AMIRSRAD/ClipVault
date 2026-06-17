@@ -893,7 +893,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
           requestAnimationFrame(() => {
             setIsOpening(true);
             window.clearTimeout(animationTimer);
-            animationTimer = window.setTimeout(() => setIsOpening(false), 180);
+            animationTimer = window.setTimeout(() => setIsOpening(false), 110);
           });
         })
       )
