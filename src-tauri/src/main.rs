@@ -24,6 +24,7 @@ pub struct AppState {
     storage: Arc<Storage>,
     pause_until: Arc<Mutex<Option<DateTime<Utc>>>>,
     paste_target: Arc<Mutex<Option<isize>>>,
+    palette_drag_until: Arc<Mutex<Option<DateTime<Utc>>>>,
 }
 
 impl AppState {
@@ -32,6 +33,7 @@ impl AppState {
             storage: Arc::new(storage),
             pause_until: Arc::new(Mutex::new(None)),
             paste_target: Arc::new(Mutex::new(None)),
+            palette_drag_until: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -136,7 +138,10 @@ pub fn run() {
                 return;
             }
 
-            if window.label() == "palette" && matches!(event, WindowEvent::Focused(false)) {
+            if window.label() == "palette"
+                && matches!(event, WindowEvent::Focused(false))
+                && !palette_drag_grace_active(window.app_handle())
+            {
                 let _ = window.hide();
             }
         })
@@ -283,4 +288,19 @@ fn remember_paste_target(app: &AppHandle) {
             *target = Some(hwnd.0 as isize);
         }
     }
+}
+
+fn palette_drag_grace_active(app: &AppHandle) -> bool {
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut drag_until) = state.palette_drag_until.lock() {
+            if let Some(until) = drag_until.as_ref() {
+                if *until > Utc::now() {
+                    return true;
+                }
+            }
+            *drag_until = None;
+        }
+    }
+
+    false
 }

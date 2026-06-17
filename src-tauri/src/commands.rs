@@ -238,13 +238,14 @@ pub fn open_main_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn start_palette_drag(app: AppHandle) -> Result<(), String> {
+pub fn start_palette_drag(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     let window = app
         .get_webview_window("palette")
         .ok_or_else(|| "palette window not found".to_string())?;
     let tauri_hwnd = window.hwnd().map_err(|error| error.to_string())?;
     let hwnd = HWND(tauri_hwnd.0 as _);
 
+    mark_palette_dragging(&state)?;
     unsafe {
         ReleaseCapture().map_err(|error| error.to_string())?;
         let _ = SendMessageW(
@@ -254,6 +255,8 @@ pub fn start_palette_drag(app: AppHandle) -> Result<(), String> {
             LPARAM(0),
         );
     }
+    mark_palette_dragging(&state)?;
+    let _ = window.set_focus();
 
     Ok(())
 }
@@ -268,6 +271,15 @@ fn pause_briefly(state: &State<'_, AppState>) -> Result<(), String> {
         .lock()
         .map_err(|_| "pause lock poisoned".to_string())?;
     *pause_until = Some(Utc::now() + Duration::seconds(2));
+    Ok(())
+}
+
+fn mark_palette_dragging(state: &State<'_, AppState>) -> Result<(), String> {
+    let mut drag_until = state
+        .palette_drag_until
+        .lock()
+        .map_err(|_| "palette drag lock poisoned".to_string())?;
+    *drag_until = Some(Utc::now() + Duration::milliseconds(1200));
     Ok(())
 }
 
