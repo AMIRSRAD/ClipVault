@@ -981,7 +981,9 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
   return (
     <div className={embedded ? "palette-root embedded" : "palette-backdrop"}>
       <div className={embedded ? "palette-panel embedded" : "palette-panel"}>
-        <div className="palette-drag-strip" onMouseDown={(event) => startPaletteDrag(event, embedded)} />
+        <div className="palette-drag-strip" title="Drag popup" aria-label="Drag quick paste popup" onMouseDown={(event) => startPaletteDrag(event, embedded)}>
+          <span />
+        </div>
         <div className="palette-titlebar" onMouseDown={(event) => startPaletteDrag(event, embedded)}>
           <strong>ClipVault</strong>
           <div className="palette-window-actions">
@@ -1104,6 +1106,7 @@ async function startPaletteDrag(event: ReactMouseEvent, embedded: boolean) {
   if (target.closest("button")) return;
 
   event.preventDefault();
+  event.stopPropagation();
   await startNativePaletteDrag();
 }
 

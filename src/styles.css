@@ -784,12 +784,30 @@ textarea:focus-visible,
 .palette-drag-strip {
   position: absolute;
   top: 0;
-  right: 0;
-  left: 0;
+  right: 104px;
+  left: 104px;
   z-index: 3;
-  height: 8px;
-  cursor: move;
-  -webkit-app-region: drag;
+  display: grid;
+  place-items: center;
+  height: 18px;
+  cursor: grab;
+  user-select: none;
+}
+
+.palette-drag-strip:active {
+  cursor: grabbing;
+}
+
+.palette-drag-strip span {
+  width: 54px;
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 42%, transparent);
+  transition: background 120ms ease;
+}
+
+.palette-drag-strip:hover span {
+  background: color-mix(in srgb, var(--muted) 72%, transparent);
 }
 
 .palette-titlebar {
@@ -799,8 +817,12 @@ textarea:focus-visible,
   justify-content: space-between;
   min-height: 42px;
   padding: 0 12px 0 16px;
+  cursor: grab;
   user-select: none;
-  -webkit-app-region: drag;
+}
+
+.palette-titlebar:active {
+  cursor: grabbing;
 }
 
 .palette-titlebar strong {
