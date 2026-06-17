@@ -8,6 +8,7 @@ mod models;
 mod ocr;
 mod privacy;
 mod storage;
+mod window_anim;
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -17,7 +18,7 @@ use clipboard::ClipboardWatcher;
 use storage::Storage;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewWindow, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewWindow, Window, WindowEvent};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
 
@@ -121,7 +122,7 @@ pub fn run() {
                         .unwrap_or(true)
                     {
                         api.prevent_close();
-                        let _ = window.hide();
+                        hide_event_window(window, 120);
                     }
                 }
 
@@ -135,7 +136,7 @@ pub fn run() {
                         .unwrap_or(true)
                     && window.is_minimized().unwrap_or(false)
                 {
-                    let _ = window.hide();
+                    hide_event_window(window, 120);
                 }
                 return;
             }
@@ -144,7 +145,7 @@ pub fn run() {
                 && matches!(event, WindowEvent::Focused(false))
                 && !palette_drag_grace_active(window.app_handle())
             {
-                let _ = window.hide();
+                hide_event_window(window, 90);
             }
         })
         .run(tauri::generate_context!())
@@ -232,7 +233,7 @@ fn show_palette(app: &AppHandle) {
         let _ = window.unminimize();
         let _ = window.set_always_on_top(true);
         position_palette_bottom_center(&window);
-        let _ = window.show();
+        window_anim::show(&window, 90);
         let _ = window.set_focus();
         let _ = window.emit("palette-opened", ());
     }
@@ -267,7 +268,7 @@ fn position_palette_bottom_center(window: &WebviewWindow) {
 
 fn show_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
+        window_anim::show(&window, 120);
         let _ = window.unminimize();
         let _ = window.set_always_on_top(true);
         let _ = window.set_focus();
@@ -275,7 +276,7 @@ fn show_main_window(app: &AppHandle) {
     }
 
     if let Some(window) = app.get_webview_window("palette") {
-        let _ = window.hide();
+        window_anim::hide(&window, 90);
     }
 }
 
@@ -305,4 +306,13 @@ fn palette_drag_grace_active(app: &AppHandle) -> bool {
     }
 
     false
+}
+
+fn hide_event_window(window: &Window, duration_ms: u32) {
+    if let Some(webview_window) = window.app_handle().get_webview_window(window.label()) {
+        window_anim::hide(&webview_window, duration_ms);
+        return;
+    }
+
+    let _ = window.hide();
 }

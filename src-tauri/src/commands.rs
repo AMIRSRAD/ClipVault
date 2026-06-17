@@ -11,7 +11,7 @@ use winreg::{enums::*, RegKey};
 use crate::{
     clipboard, hotkey,
     models::{AppSettings, ClipboardFilters, ClipboardItem, OcrResponse, SearchResponse},
-    ocr, AppState,
+    ocr, window_anim, AppState,
 };
 
 #[tauri::command]
@@ -226,7 +226,7 @@ pub fn open_external(target: String) -> Result<(), String> {
 #[tauri::command]
 pub fn close_palette(app: AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("palette") {
-        window.hide().map_err(|error| error.to_string())?;
+        window_anim::hide(&window, 90);
     }
     Ok(())
 }
@@ -236,18 +236,18 @@ pub fn open_main_window(app: AppHandle) -> Result<(), String> {
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| "main window not found".to_string())?;
-    window.show().map_err(|error| error.to_string())?;
     window.unminimize().map_err(|error| error.to_string())?;
     window
         .set_always_on_top(true)
         .map_err(|error| error.to_string())?;
+    window_anim::show(&window, 120);
     window.set_focus().map_err(|error| error.to_string())?;
     window
         .set_always_on_top(false)
         .map_err(|error| error.to_string())?;
 
     if let Some(palette) = app.get_webview_window("palette") {
-        palette.hide().map_err(|error| error.to_string())?;
+        window_anim::hide(&palette, 90);
     }
 
     Ok(())
