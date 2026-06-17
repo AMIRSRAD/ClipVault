@@ -854,12 +854,13 @@ function PaletteOnly() {
   );
 }
 
-function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; embedded?: boolean }) {
+function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | Promise<void>; embedded?: boolean }) {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<ClipboardItem[]>([]);
   const [active, setActive] = useState(0);
   const [mode, setMode] = useState<"all" | "text" | "image" | "note" | "pinned">("all");
   const [contextMenu, setContextMenu] = useState<PaletteContextMenu>(null);
+  const [isOpening, setIsOpening] = useState(false);
 
   const sectionTitle = mode === "note" ? "Notes" : mode === "image" ? "Images" : mode === "text" ? "Text" : mode === "pinned" ? "Pinned" : "Clipboard";
   const groupedItems = useMemo(() => {
@@ -879,6 +880,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
   useEffect(() => {
     if (!embedded || !("__TAURI_INTERNALS__" in window)) return;
     let unlisten: (() => void) | undefined;
+    let animationTimer: number | undefined;
 
     import("@tauri-apps/api/event")
       .then(({ listen }) =>
@@ -887,6 +889,12 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
           setMode("all");
           setActive(0);
           setContextMenu(null);
+          setIsOpening(false);
+          requestAnimationFrame(() => {
+            setIsOpening(true);
+            window.clearTimeout(animationTimer);
+            animationTimer = window.setTimeout(() => setIsOpening(false), 180);
+          });
         })
       )
       .then((cleanup) => {
@@ -894,7 +902,10 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
       })
       .catch(() => undefined);
 
-    return () => unlisten?.();
+    return () => {
+      unlisten?.();
+      window.clearTimeout(animationTimer);
+    };
   }, [embedded]);
 
   useEffect(() => {
@@ -974,20 +985,22 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
   }, [active, contextMenu, displayItems, onClose]);
 
   async function pasteAndClose(id: string) {
+    await onClose();
     try {
       await pasteItem(id);
-    } finally {
-      onClose();
+    } catch (error) {
+      console.error("Failed to paste item", error);
     }
   }
 
   async function pasteTransformedAndClose(item: ClipboardItem, transform: PasteTransform) {
     const transformed = transformText(smartText(item), transform);
     if (transformed === null) return;
+    await onClose();
     try {
       await pasteText(transformed);
-    } finally {
-      onClose();
+    } catch (error) {
+      console.error("Failed to paste transformed text", error);
     }
   }
 
@@ -1028,7 +1041,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
 
   return (
     <div className={embedded ? "palette-root embedded" : "palette-backdrop"}>
-      <div className={embedded ? "palette-panel embedded" : "palette-panel"}>
+      <div className={`${embedded ? "palette-panel embedded" : "palette-panel"} ${isOpening ? "opening" : ""}`}>
         <div className="palette-drag-strip" title="Drag popup" aria-label="Drag quick paste popup" onMouseDown={(event) => startPaletteDrag(event, embedded)}>
           <span />
         </div>
