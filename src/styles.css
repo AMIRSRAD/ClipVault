@@ -1148,6 +1148,59 @@ textarea:focus-visible,
   color: var(--popup-accent);
 }
 
+.palette-context-menu {
+  position: fixed;
+  z-index: 20;
+  display: grid;
+  gap: 3px;
+  width: 206px;
+  padding: 6px;
+  border: 1px solid var(--popup-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--popup-panel) 94%, #000);
+  color: var(--text);
+  box-shadow: 0 16px 44px rgb(0 0 0 / 45%);
+}
+
+.palette-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 12px;
+}
+
+.palette-context-menu button:hover:not(:disabled) {
+  background: var(--popup-icon-hover);
+}
+
+.palette-context-menu button:disabled {
+  opacity: 0.42;
+}
+
+.palette-context-menu svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.palette-context-label {
+  margin: 4px 4px 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--popup-border);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .palette-empty {
   display: grid;
   place-items: center;

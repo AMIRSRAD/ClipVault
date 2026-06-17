@@ -55,6 +55,7 @@ import type { AppSettings, ClipboardFilters, ClipboardItem, OcrResponse } from "
 type ViewKey = "all" | "pinned" | "text" | "images" | "notes" | "tags" | "settings";
 type ViewGroup = "clipboard" | "saved" | "utility";
 type PasteTransform = "plain" | "trim" | "singleLine" | "upper" | "lower" | "title" | "jsonPretty" | "jsonMinify";
+type PaletteContextMenu = { item: ClipboardItem; x: number; y: number } | null;
 
 const viewLabels: Array<{ key: ViewKey; label: string; icon: typeof Clipboard; group: ViewGroup }> = [
   { key: "all", label: "All", icon: Clipboard, group: "clipboard" },
@@ -100,6 +101,16 @@ const noteTemplates = [
 ] satisfies Array<{ label: string; icon: typeof Clipboard; tags: string[]; text: string }>;
 
 const noteCollections = ["work", "code", "emails", "prompts", "personal"] as const;
+const pasteTransformActions: Array<{ key: PasteTransform; label: string; enabled?: (text: string) => boolean }> = [
+  { key: "plain", label: "Plain text" },
+  { key: "trim", label: "Trim spaces" },
+  { key: "singleLine", label: "Single line" },
+  { key: "upper", label: "UPPERCASE" },
+  { key: "lower", label: "lowercase" },
+  { key: "title", label: "Title Case" },
+  { key: "jsonPretty", label: "JSON pretty", enabled: (text) => Boolean(formatJson(text)) },
+  { key: "jsonMinify", label: "JSON minify", enabled: (text) => Boolean(formatJson(text)) }
+];
 
 function filtersForView(view: ViewKey, tag: string | null, noteCollection: string | null): ClipboardFilters {
   if (view === "pinned") return { kind: "all", pinned: true };
@@ -705,19 +716,7 @@ function SmartActions({
 
 function PasteTransformActions({ item }: { item: ClipboardItem }) {
   const text = smartText(item);
-  const hasJson = Boolean(formatJson(text));
   if (!text.trim()) return null;
-
-  const actions: Array<{ key: PasteTransform; label: string; enabled?: boolean }> = [
-    { key: "plain", label: "Plain" },
-    { key: "trim", label: "Trim" },
-    { key: "singleLine", label: "No breaks" },
-    { key: "upper", label: "UPPER" },
-    { key: "lower", label: "lower" },
-    { key: "title", label: "Title" },
-    { key: "jsonPretty", label: "JSON pretty", enabled: hasJson },
-    { key: "jsonMinify", label: "JSON minify", enabled: hasJson }
-  ];
 
   async function handlePaste(transform: PasteTransform) {
     const transformed = transformText(text, transform);
@@ -728,8 +727,8 @@ function PasteTransformActions({ item }: { item: ClipboardItem }) {
     <div className="paste-transforms">
       <span>Paste as</span>
       <div>
-        {actions
-          .filter((action) => action.enabled !== false)
+        {pasteTransformActions
+          .filter((action) => action.enabled?.(text) !== false)
           .map((action) => (
             <button key={action.key} className="smart-action-button" onClick={() => handlePaste(action.key)}>
               {action.label}
@@ -860,6 +859,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
   const [items, setItems] = useState<ClipboardItem[]>([]);
   const [active, setActive] = useState(0);
   const [mode, setMode] = useState<"all" | "text" | "image" | "note" | "pinned">("all");
+  const [contextMenu, setContextMenu] = useState<PaletteContextMenu>(null);
 
   const sectionTitle = mode === "note" ? "Notes" : mode === "image" ? "Images" : mode === "text" ? "Text" : mode === "pinned" ? "Pinned" : "Clipboard";
   const groupedItems = useMemo(() => {
@@ -873,6 +873,8 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
     ].filter((group) => group.items.length > 0);
   }, [items, mode, sectionTitle]);
   const displayItems = useMemo(() => groupedItems.flatMap((group) => group.items), [groupedItems]);
+  const contextMenuText = contextMenu ? smartText(contextMenu.item) : "";
+  const contextPasteActions = pasteTransformActions.filter((action) => contextMenuText.trim() && action.enabled?.(contextMenuText) !== false);
 
   useEffect(() => {
     if (!embedded || !("__TAURI_INTERNALS__" in window)) return;
@@ -884,6 +886,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
           setQuery("");
           setMode("all");
           setActive(0);
+          setContextMenu(null);
         })
       )
       .then((cleanup) => {
@@ -909,8 +912,19 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
     searchItems({ query: "", filters, limit: 80, offset: 0 }).then((response) => {
       setItems(rankPaletteItems(response.items, query).slice(0, 16));
       setActive(0);
+      setContextMenu(null);
     });
   }, [mode, query]);
+
+  useEffect(() => {
+    const closeMenu = () => setContextMenu(null);
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("blur", closeMenu);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("blur", closeMenu);
+    };
+  }, []);
 
   useEffect(() => {
     const handle = async (event: KeyboardEvent) => {
@@ -925,7 +939,13 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
           return;
         }
       }
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        if (contextMenu) {
+          setContextMenu(null);
+          return;
+        }
+        onClose();
+      }
       if (event.key === "ArrowDown") setActive((value) => Math.min(value + 1, displayItems.length - 1));
       if (event.key === "ArrowUp") setActive((value) => Math.max(value - 1, 0));
       if (event.key === "Enter" && displayItems[active]) await pasteAndClose(displayItems[active].id);
@@ -951,7 +971,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
     };
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
-  }, [active, displayItems, onClose]);
+  }, [active, contextMenu, displayItems, onClose]);
 
   async function pasteAndClose(id: string) {
     try {
@@ -959,6 +979,28 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
     } finally {
       onClose();
     }
+  }
+
+  async function pasteTransformedAndClose(item: ClipboardItem, transform: PasteTransform) {
+    const transformed = transformText(smartText(item), transform);
+    if (transformed === null) return;
+    try {
+      await pasteText(transformed);
+    } finally {
+      onClose();
+    }
+  }
+
+  function openItemContextMenu(event: ReactMouseEvent, item: ClipboardItem, displayIndex: number) {
+    event.preventDefault();
+    event.stopPropagation();
+    setActive(displayIndex);
+
+    const menuWidth = 206;
+    const menuHeight = smartText(item).trim() ? 338 : 112;
+    const x = Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8));
+    const y = Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8));
+    setContextMenu({ item, x, y });
   }
 
   async function copyPaletteText(event: ReactMouseEvent | ReactKeyboardEvent, item: ClipboardItem) {
@@ -976,6 +1018,12 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
       const updated = current.map((candidate) => (candidate.id === item.id ? { ...candidate, pinned: !item.pinned } : candidate));
       return mode === "pinned" ? updated.filter((candidate) => candidate.pinned) : updated;
     });
+  }
+
+  async function copyContextText(item: ClipboardItem) {
+    const value = smartText(item);
+    if (value) await navigator.clipboard?.writeText(value);
+    setContextMenu(null);
   }
 
   return (
@@ -1049,6 +1097,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
                         key={item.id}
                         className={`${displayIndex === active ? "palette-result active" : "palette-result"} ${item.kind === "note" ? "note-result" : ""}`}
                         onMouseEnter={() => setActive(displayIndex)}
+                        onContextMenu={(event) => openItemContextMenu(event, item, displayIndex)}
                       >
                         <div
                           className="palette-card-main"
@@ -1091,6 +1140,36 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void; em
             })
           )}
         </div>
+        {contextMenu && (
+          <div
+            className="palette-context-menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            role="menu"
+            onClick={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onContextMenu={(event) => event.preventDefault()}
+          >
+            <button role="menuitem" onClick={() => pasteAndClose(contextMenu.item.id)}>
+              <Clipboard size={14} />
+              Paste item
+            </button>
+            <button role="menuitem" disabled={!contextMenuText} onClick={() => copyContextText(contextMenu.item)}>
+              <Copy size={14} />
+              Copy text
+            </button>
+            {contextPasteActions.length > 0 && (
+              <>
+                <div className="palette-context-label">Paste as</div>
+                {contextPasteActions.map((action) => (
+                  <button key={action.key} role="menuitem" onClick={() => pasteTransformedAndClose(contextMenu.item, action.key)}>
+                    <Clipboard size={14} />
+                    {action.label}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
