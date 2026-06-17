@@ -285,6 +285,20 @@ function MainShell() {
   }, [loadItems]);
 
   useEffect(() => {
+    if (!selectedId) return;
+    let cancelled = false;
+    getItem(selectedId)
+      .then((item) => {
+        if (!item || cancelled) return;
+        setItems((current) => current.map((candidate) => (candidate.id === item.id ? item : candidate)));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  useEffect(() => {
     if (!("__TAURI_INTERNALS__" in window)) return;
     let unlisten: (() => void) | undefined;
 

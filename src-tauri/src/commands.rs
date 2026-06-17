@@ -1,5 +1,6 @@
 use chrono::{Duration, Utc};
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
 use windows::Win32::UI::Input::KeyboardAndMouse::ReleaseCapture;
@@ -8,7 +9,7 @@ use windows::Win32::UI::WindowsAndMessaging::{SendMessageW, HTCAPTION, WM_NCLBUT
 use winreg::{enums::*, RegKey};
 
 use crate::{
-    clipboard,
+    clipboard, hotkey,
     models::{AppSettings, ClipboardFilters, ClipboardItem, OcrResponse, SearchResponse},
     ocr, AppState,
 };
@@ -145,10 +146,25 @@ pub fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, String> {
 
 #[tauri::command]
 pub fn update_settings(
+    app: AppHandle,
     state: State<'_, AppState>,
     settings: AppSettings,
 ) -> Result<AppSettings, String> {
     set_launch_on_startup(settings.launch_on_startup).map_err(|error| error.to_string())?;
+    let previous_settings = state
+        .storage
+        .settings()
+        .map_err(|error| error.to_string())?;
+    let previous_shortcut = hotkey::parse_hotkey(&previous_settings.hotkey)
+        .or_else(|_| hotkey::parse_hotkey("Ctrl+Shift+V"))?;
+    let shortcut = hotkey::parse_hotkey(&settings.hotkey)?;
+    app.global_shortcut()
+        .unregister_all()
+        .map_err(|error| error.to_string())?;
+    if let Err(error) = app.global_shortcut().register(shortcut) {
+        let _ = app.global_shortcut().register(previous_shortcut);
+        return Err(error.to_string());
+    }
     state
         .storage
         .update_settings(&settings)

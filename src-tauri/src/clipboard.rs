@@ -12,13 +12,18 @@ use base64::Engine as _;
 use chrono::{DateTime, Utc};
 use image::{imageops::FilterType, DynamicImage, ImageBuffer, ImageFormat, Rgba};
 use tauri::AppHandle;
-use windows::Win32::Foundation::HWND;
+use windows::Win32::Foundation::{CloseHandle, HWND};
 use windows::Win32::System::DataExchange::GetClipboardSequenceNumber;
+use windows::Win32::System::Threading::{
+    OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION,
+};
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
     VIRTUAL_KEY, VK_CONTROL, VK_V,
 };
-use windows::Win32::UI::WindowsAndMessaging::{IsWindow, SetForegroundWindow};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId, IsWindow, SetForegroundWindow,
+};
 
 use crate::{
     models::{ClipboardItem, ClipboardKind, NewClipboardItem},
@@ -279,13 +284,49 @@ fn key_input(key: VIRTUAL_KEY, flags: KEYBD_EVENT_FLAGS) -> INPUT {
 }
 
 fn active_window_app() -> Option<String> {
-    Some("Foreground app".to_string())
+    #[cfg(target_os = "windows")]
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() {
+            return None;
+        }
+
+        let mut process_id = 0;
+        GetWindowThreadProcessId(hwnd, Some(&mut process_id));
+        if process_id == 0 {
+            return None;
+        }
+
+        let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id) else {
+            return None;
+        };
+        let mut buffer = [0u16; 32768];
+        let mut length = buffer.len() as u32;
+        let result = QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_FORMAT(0),
+            windows::core::PWSTR(buffer.as_mut_ptr()),
+            &mut length,
+        );
+        let _ = CloseHandle(handle);
+        if result.is_err() || length == 0 {
+            return None;
+        }
+
+        let path = String::from_utf16_lossy(&buffer[..length as usize]);
+        std::path::Path::new(&path)
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .or(Some(path))
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    None
 }
 
 fn active_window_title() -> Option<String> {
     #[cfg(target_os = "windows")]
     unsafe {
-        use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW};
         let hwnd = GetForegroundWindow();
         let mut buffer = [0u16; 512];
         let len = GetWindowTextW(hwnd, &mut buffer);

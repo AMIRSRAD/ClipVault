@@ -3,6 +3,7 @@
 mod clipboard;
 mod commands;
 mod crypto;
+mod hotkey;
 mod models;
 mod ocr;
 mod privacy;
@@ -17,7 +18,7 @@ use storage::Storage;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewWindow, WindowEvent};
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
 
 pub struct AppState {
@@ -86,16 +87,17 @@ pub fn run() {
             app.manage(state);
             setup_tray(app.handle())?;
 
-            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyV);
-            app.global_shortcut().register(shortcut)?;
-
-            if app
+            let settings = app
                 .state::<AppState>()
                 .storage
                 .settings()
-                .map(|settings| settings.start_minimized)
-                .unwrap_or(false)
-            {
+                .unwrap_or_default();
+            let shortcut = hotkey::parse_hotkey(&settings.hotkey)
+                .or_else(|_| hotkey::parse_hotkey("Ctrl+Shift+V"))
+                .map_err(|error| tauri::Error::Anyhow(anyhow::anyhow!(error)))?;
+            app.global_shortcut().register(shortcut)?;
+
+            if settings.start_minimized {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.hide();
                 }

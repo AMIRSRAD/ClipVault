@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use base64::{engine::general_purpose, Engine as _};
 use chrono::{Duration, Utc};
 use directories::ProjectDirs;
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -267,7 +267,7 @@ impl Storage {
             ],
         )?;
         self.reindex_item(&conn, &id)?;
-        self.prune_expired_locked(&conn)?;
+        self.prune_expired_locked(&conn, settings.max_storage_mb)?;
         Ok(Some(id))
     }
 
@@ -330,7 +330,7 @@ impl Storage {
         let total = ids.len() as i64;
         let items = ids
             .into_iter()
-            .filter_map(|id| self.get_locked(&conn, &id).transpose())
+            .filter_map(|id| self.get_locked_for_list(&conn, &id).transpose())
             .collect::<Result<Vec<_>>>()?;
 
         Ok(SearchResponse { items, total })
@@ -412,6 +412,7 @@ impl Storage {
         let conn = self.conn()?;
         conn.execute_batch(
             "
+            PRAGMA foreign_keys = ON;
             PRAGMA journal_mode = WAL;
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -462,11 +463,26 @@ impl Storage {
     }
 
     fn get_locked(&self, conn: &Connection, id: &str) -> Result<Option<ClipboardItem>> {
+        self.get_locked_with_image(conn, id, false)
+    }
+
+    fn get_locked_for_list(&self, conn: &Connection, id: &str) -> Result<Option<ClipboardItem>> {
+        self.get_locked_with_image(conn, id, true)
+    }
+
+    fn get_locked_with_image(
+        &self,
+        conn: &Connection,
+        id: &str,
+        prefer_thumbnail: bool,
+    ) -> Result<Option<ClipboardItem>> {
         conn.query_row(
-            "SELECT id, kind, text, ocr_text, image_blob, source_app, source_title, created_at,
+            "SELECT id, kind, text, ocr_text,
+                    CASE WHEN ?2 THEN COALESCE(thumbnail_blob, image_blob) ELSE image_blob END,
+                    source_app, source_title, created_at,
                     last_used_at, pinned, size_bytes, expires_at
              FROM clipboard_items WHERE id = ?1",
-            [id],
+            params![id, prefer_thumbnail],
             |row| {
                 let id: String = row.get(0)?;
                 let kind_raw: String = row.get(1)?;
@@ -505,15 +521,21 @@ impl Storage {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<String>> {
-        let mut rows = conn.prepare(
+        let (where_clause, mut values) = filter_sql(filters, 1);
+        values.push(limit.to_string());
+        values.push(offset.to_string());
+        let sql = format!(
             "SELECT id FROM clipboard_items
+             {where_clause}
              ORDER BY pinned DESC, datetime(created_at) DESC
-             LIMIT ?1 OFFSET ?2",
-        )?;
+             LIMIT ?{} OFFSET ?{}",
+            values.len() - 1,
+            values.len()
+        );
+        let mut rows = conn.prepare(&sql)?;
         let ids = rows
-            .query_map(params![limit, offset], |row| row.get::<_, String>(0))?
+            .query_map(params_from_iter(values), |row| row.get::<_, String>(0))?
             .filter_map(Result::ok)
-            .filter(|id| self.matches_filters(conn, id, filters).unwrap_or(false))
             .collect();
         Ok(ids)
     }
@@ -528,47 +550,33 @@ impl Storage {
     ) -> Result<Vec<String>> {
         let escaped = query.replace('"', "\"\"");
         let fts_query = format!("\"{escaped}\"*");
-        let mut stmt = conn.prepare(
+        let (filter_clause, filter_values) = filter_sql(filters, 2);
+        let filter_clause = if filter_clause.is_empty() {
+            String::new()
+        } else {
+            format!(" AND {}", filter_clause.trim_start_matches("WHERE "))
+        };
+        let mut values = vec![fts_query];
+        values.extend(filter_values);
+        values.push(limit.to_string());
+        values.push(offset.to_string());
+        let sql = format!(
             "SELECT clipboard_items.id
              FROM items_fts
              JOIN clipboard_items ON clipboard_items.id = items_fts.id
              WHERE items_fts MATCH ?1
+             {filter_clause}
              ORDER BY clipboard_items.pinned DESC, datetime(clipboard_items.created_at) DESC
-             LIMIT ?2 OFFSET ?3",
-        )?;
+             LIMIT ?{} OFFSET ?{}",
+            values.len() - 1,
+            values.len()
+        );
+        let mut stmt = conn.prepare(&sql)?;
         let ids = stmt
-            .query_map(params![fts_query, limit, offset], |row| {
-                row.get::<_, String>(0)
-            })?
+            .query_map(params_from_iter(values), |row| row.get::<_, String>(0))?
             .filter_map(Result::ok)
-            .filter(|id| self.matches_filters(conn, id, filters).unwrap_or(false))
             .collect();
         Ok(ids)
-    }
-
-    fn matches_filters(
-        &self,
-        conn: &Connection,
-        id: &str,
-        filters: &ClipboardFilters,
-    ) -> Result<bool> {
-        let Some(item) = self.get_locked(conn, id)? else {
-            return Ok(false);
-        };
-        if let Some(kind) = &filters.kind {
-            if kind != "all" && item.kind.as_str() != kind {
-                return Ok(false);
-            }
-        }
-        if filters.pinned.unwrap_or(false) && !item.pinned {
-            return Ok(false);
-        }
-        if let Some(tag) = &filters.tag {
-            if !item.tags.iter().any(|candidate| candidate == tag) {
-                return Ok(false);
-            }
-        }
-        Ok(true)
     }
 
     fn reindex_item(&self, conn: &Connection, id: &str) -> Result<()> {
@@ -596,17 +604,54 @@ impl Storage {
         Ok(())
     }
 
-    fn prune_expired_locked(&self, conn: &Connection) -> Result<()> {
-        conn.execute("DELETE FROM clipboard_items WHERE kind != 'note' AND pinned = 0 AND expires_at IS NOT NULL AND datetime(expires_at) < datetime('now')", [])?;
-        conn.execute(
-            "DELETE FROM clipboard_items WHERE id IN (
-                SELECT id FROM clipboard_items
-                WHERE kind != 'note' AND pinned = 0
-                ORDER BY datetime(created_at) DESC
-                LIMIT -1 OFFSET 10000
-            )",
-            [],
+    fn prune_expired_locked(&self, conn: &Connection, max_storage_mb: i64) -> Result<()> {
+        let expired_ids = collect_ids(
+            conn,
+            "SELECT id FROM clipboard_items
+             WHERE kind != 'note' AND pinned = 0 AND expires_at IS NOT NULL
+               AND datetime(expires_at) < datetime('now')",
         )?;
+        delete_items_locked(conn, &expired_ids)?;
+
+        let overflow_ids = collect_ids(
+            conn,
+            "SELECT id FROM clipboard_items
+             WHERE kind != 'note' AND pinned = 0
+             ORDER BY datetime(created_at) DESC
+             LIMIT -1 OFFSET 10000",
+        )?;
+        delete_items_locked(conn, &overflow_ids)?;
+
+        let max_bytes = max_storage_mb.max(64) * 1024 * 1024;
+        let total_bytes: i64 = conn.query_row(
+            "SELECT COALESCE(SUM(size_bytes), 0) FROM clipboard_items",
+            [],
+            |row| row.get(0),
+        )?;
+        if total_bytes <= max_bytes {
+            return Ok(());
+        }
+
+        let mut reclaim = total_bytes - max_bytes;
+        let mut stmt = conn.prepare(
+            "SELECT id, size_bytes FROM clipboard_items
+             WHERE kind != 'note' AND pinned = 0
+             ORDER BY datetime(created_at) ASC",
+        )?;
+        let mut rows = stmt.query([])?;
+        let mut ids = Vec::new();
+        while reclaim > 0 {
+            let Some(row) = rows.next()? else {
+                break;
+            };
+            let id: String = row.get(0)?;
+            let size_bytes: i64 = row.get(1)?;
+            reclaim -= size_bytes.max(0);
+            ids.push(id);
+        }
+        drop(rows);
+        drop(stmt);
+        delete_items_locked(conn, &ids)?;
         Ok(())
     }
 
@@ -648,6 +693,60 @@ fn tags_for_item(conn: &Connection, id: &str) -> rusqlite::Result<Vec<String>> {
         .query_map([id], |row| row.get::<_, String>(0))?
         .collect();
     tags
+}
+
+fn filter_sql(filters: &ClipboardFilters, first_placeholder: usize) -> (String, Vec<String>) {
+    let mut clauses = Vec::new();
+    let mut values = Vec::new();
+
+    if let Some(kind) = &filters.kind {
+        if kind != "all" {
+            clauses.push(format!("kind = ?{}", first_placeholder + values.len()));
+            values.push(kind.to_string());
+        }
+    }
+
+    if filters.pinned.unwrap_or(false) {
+        clauses.push(format!("pinned = ?{}", first_placeholder + values.len()));
+        values.push("1".to_string());
+    }
+
+    if let Some(tag) = filters.tag.as_deref().filter(|tag| !tag.trim().is_empty()) {
+        clauses.push(format!(
+            "EXISTS (
+                SELECT 1 FROM item_tags
+                WHERE item_tags.item_id = clipboard_items.id
+                  AND item_tags.tag_name = ?{}
+            )",
+            first_placeholder + values.len()
+        ));
+        values.push(tag.trim().to_lowercase());
+    }
+
+    let where_clause = if clauses.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", clauses.join(" AND "))
+    };
+
+    (where_clause, values)
+}
+
+fn collect_ids(conn: &Connection, sql: &str) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare(sql)?;
+    let ids = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(ids)
+}
+
+fn delete_items_locked(conn: &Connection, ids: &[String]) -> Result<()> {
+    for id in ids {
+        conn.execute("DELETE FROM item_tags WHERE item_id = ?1", [id])?;
+        conn.execute("DELETE FROM items_fts WHERE id = ?1", [id])?;
+        conn.execute("DELETE FROM clipboard_items WHERE id = ?1", [id])?;
+    }
+    Ok(())
 }
 
 fn decode_optional_blob(value: &Option<String>) -> Result<Option<Vec<u8>>> {
@@ -713,9 +812,116 @@ mod tests {
                 [&note.id],
             )
             .expect("force old expiry");
-            storage.prune_expired_locked(&conn).expect("prune");
+            storage.prune_expired_locked(&conn, 512).expect("prune");
         }
 
         assert!(storage.get(&note.id).expect("get").is_some());
+    }
+
+    #[test]
+    fn storage_cap_prune_removes_old_unpinned_clip_data_and_indexes() {
+        let storage = Storage::in_memory().expect("storage");
+        let conn = storage.conn().expect("conn");
+        let old_id = "old";
+        let pinned_id = "pinned";
+        conn.execute(
+            "INSERT INTO clipboard_items(
+                id, kind, text, source_app, source_title, hash, created_at, pinned, size_bytes, expires_at
+             ) VALUES
+                (?1, 'text', 'old clip', 'app', 'old', 'old-hash', '2026-01-01T00:00:00Z', 0, 73400320, NULL),
+                (?2, 'text', 'pinned clip', 'app', 'pinned', 'pinned-hash', '2026-01-02T00:00:00Z', 1, 73400320, NULL)",
+            params![old_id, pinned_id],
+        )
+        .expect("insert clips");
+        conn.execute("INSERT INTO tags(name) VALUES('work')", [])
+            .expect("insert tag");
+        conn.execute(
+            "INSERT INTO item_tags(item_id, tag_name) VALUES(?1, 'work')",
+            [old_id],
+        )
+        .expect("insert item tag");
+        storage.reindex_item(&conn, old_id).expect("index old");
+        storage
+            .reindex_item(&conn, pinned_id)
+            .expect("index pinned");
+
+        storage.prune_expired_locked(&conn, 64).expect("prune");
+
+        assert!(storage.get_locked(&conn, old_id).expect("old").is_none());
+        assert!(storage
+            .get_locked(&conn, pinned_id)
+            .expect("pinned")
+            .is_some());
+        let old_fts_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM items_fts WHERE id = ?1",
+                [old_id],
+                |row| row.get(0),
+            )
+            .expect("fts count");
+        let old_tag_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM item_tags WHERE item_id = ?1",
+                [old_id],
+                |row| row.get(0),
+            )
+            .expect("tag count");
+        assert_eq!(old_fts_count, 0);
+        assert_eq!(old_tag_count, 0);
+    }
+
+    #[test]
+    fn filtered_search_applies_kind_before_limit() {
+        let storage = Storage::in_memory().expect("storage");
+        let conn = storage.conn().expect("conn");
+        for index in 0..5 {
+            conn.execute(
+                "INSERT INTO clipboard_items(
+                    id, kind, text, source_app, source_title, hash, created_at, pinned, size_bytes, expires_at
+                 ) VALUES (?1, 'text', ?2, 'app', 'text', ?3, ?4, 0, 10, NULL)",
+                params![
+                    format!("text-{index}"),
+                    format!("text {index}"),
+                    format!("text-hash-{index}"),
+                    format!("2026-01-0{}T00:00:00Z", index + 2)
+                ],
+            )
+            .expect("insert text");
+        }
+        conn.execute(
+            "INSERT INTO clipboard_items(
+                id, kind, image_blob, thumbnail_blob, source_app, source_title, hash, created_at, pinned, size_bytes, expires_at
+             ) VALUES ('image-1', 'image', X'01020304', X'05', 'app', 'image', 'image-hash', '2026-01-01T00:00:00Z', 0, 4, NULL)",
+            [],
+        )
+        .expect("insert image");
+        drop(conn);
+
+        let response = storage
+            .search(
+                String::new(),
+                ClipboardFilters {
+                    kind: Some("image".to_string()),
+                    pinned: None,
+                    tag: None,
+                },
+                2,
+                0,
+            )
+            .expect("search images");
+
+        assert_eq!(response.items.len(), 1);
+        assert_eq!(response.items[0].id, "image-1");
+        assert_eq!(
+            response.items[0].image_url.as_deref(),
+            Some("data:image/png;base64,BQ==")
+        );
+        assert_eq!(
+            storage
+                .get("image-1")
+                .expect("get image")
+                .and_then(|item| item.image_url),
+            Some("data:image/png;base64,AQIDBA==".to_string())
+        );
     }
 }
