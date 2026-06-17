@@ -875,6 +875,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
   const [mode, setMode] = useState<"all" | "text" | "image" | "note" | "pinned">("all");
   const [contextMenu, setContextMenu] = useState<PaletteContextMenu>(null);
   const [isOpening, setIsOpening] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   const sectionTitle = mode === "note" ? "Notes" : mode === "image" ? "Images" : mode === "text" ? "Text" : mode === "pinned" ? "Pinned" : "Clipboard";
   const groupedItems = useMemo(() => {
@@ -903,11 +904,12 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
           setMode("all");
           setActive(0);
           setContextMenu(null);
+          setIsClosing(false);
           setIsOpening(false);
           requestAnimationFrame(() => {
             setIsOpening(true);
             window.clearTimeout(animationTimer);
-            animationTimer = window.setTimeout(() => setIsOpening(false), 110);
+            animationTimer = window.setTimeout(() => setIsOpening(false), 150);
           });
         })
       )
@@ -920,6 +922,13 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
       unlisten?.();
       window.clearTimeout(animationTimer);
     };
+  }, [embedded]);
+
+  useEffect(() => {
+    if (embedded) return;
+    setIsOpening(true);
+    const timer = window.setTimeout(() => setIsOpening(false), 150);
+    return () => window.clearTimeout(timer);
   }, [embedded]);
 
   useEffect(() => {
@@ -969,7 +978,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
           setContextMenu(null);
           return;
         }
-        onClose();
+        void closeWithAnimation();
       }
       if (event.key === "ArrowDown") setActive((value) => Math.min(value + 1, displayItems.length - 1));
       if (event.key === "ArrowUp") setActive((value) => Math.max(value - 1, 0));
@@ -998,8 +1007,17 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
     return () => window.removeEventListener("keydown", handle);
   }, [active, contextMenu, displayItems, onClose]);
 
-  async function pasteAndClose(id: string) {
+  async function closeWithAnimation() {
+    setContextMenu(null);
+    setIsOpening(false);
+    setIsClosing(true);
+    await new Promise((resolve) => window.setTimeout(resolve, 110));
     await onClose();
+    setIsClosing(false);
+  }
+
+  async function pasteAndClose(id: string) {
+    await closeWithAnimation();
     try {
       await pasteItem(id);
     } catch (error) {
@@ -1010,7 +1028,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
   async function pasteTransformedAndClose(item: ClipboardItem, transform: PasteTransform) {
     const transformed = transformText(smartText(item), transform);
     if (transformed === null) return;
-    await onClose();
+    await closeWithAnimation();
     try {
       await pasteText(transformed);
     } catch (error) {
@@ -1055,7 +1073,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
 
   return (
     <div className={embedded ? "palette-root embedded" : "palette-backdrop"}>
-      <div className={`${embedded ? "palette-panel embedded" : "palette-panel"} ${isOpening ? "opening" : ""}`}>
+      <div className={`${embedded ? "palette-panel embedded" : "palette-panel"} ${isOpening ? "opening" : ""} ${isClosing ? "closing" : ""}`}>
         <div className="palette-drag-strip" title="Drag popup" aria-label="Drag quick paste popup" onMouseDown={(event) => startPaletteDrag(event, embedded)}>
           <span />
         </div>
@@ -1066,7 +1084,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
               <SquareArrowOutUpRight size={15} />
               <span>Open app</span>
             </button>
-            <button className="palette-close" onClick={onClose} title="Close">
+            <button className="palette-close" onClick={() => void closeWithAnimation()} title="Close">
               <X size={17} />
             </button>
           </div>

@@ -145,7 +145,7 @@ pub fn run() {
                 && matches!(event, WindowEvent::Focused(false))
                 && !palette_drag_grace_active(window.app_handle())
             {
-                hide_event_window(window, 90);
+                hide_event_window(window, 0);
             }
         })
         .run(tauri::generate_context!())
@@ -233,7 +233,7 @@ fn show_palette(app: &AppHandle) {
         let _ = window.unminimize();
         let _ = window.set_always_on_top(true);
         position_palette_bottom_center(&window);
-        window_anim::show(&window, 90);
+        let _ = window.show();
         let _ = window.set_focus();
         let _ = window.emit("palette-opened", ());
     }
@@ -276,7 +276,7 @@ fn show_main_window(app: &AppHandle) {
     }
 
     if let Some(window) = app.get_webview_window("palette") {
-        window_anim::hide(&window, 90);
+        let _ = window.hide();
     }
 }
 
@@ -309,6 +309,11 @@ fn palette_drag_grace_active(app: &AppHandle) -> bool {
 }
 
 fn hide_event_window(window: &Window, duration_ms: u32) {
+    if duration_ms == 0 {
+        let _ = window.hide();
+        return;
+    }
+
     if let Some(webview_window) = window.app_handle().get_webview_window(window.label()) {
         window_anim::hide(&webview_window, duration_ms);
         return;

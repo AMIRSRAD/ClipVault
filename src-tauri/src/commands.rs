@@ -226,7 +226,7 @@ pub fn open_external(target: String) -> Result<(), String> {
 #[tauri::command]
 pub fn close_palette(app: AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("palette") {
-        window_anim::hide(&window, 90);
+        window.hide().map_err(|error| error.to_string())?;
     }
     Ok(())
 }
@@ -247,7 +247,7 @@ pub fn open_main_window(app: AppHandle) -> Result<(), String> {
         .map_err(|error| error.to_string())?;
 
     if let Some(palette) = app.get_webview_window("palette") {
-        window_anim::hide(&palette, 90);
+        palette.hide().map_err(|error| error.to_string())?;
     }
 
     Ok(())

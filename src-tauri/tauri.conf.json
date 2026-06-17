@@ -28,10 +28,12 @@
         "height": 540,
         "resizable": false,
         "decorations": false,
+        "shadow": false,
         "alwaysOnTop": true,
         "visible": false,
         "center": true,
-        "skipTaskbar": true
+        "skipTaskbar": true,
+        "backgroundColor": "#1f1f1f"
       }
     ],
     "security": {
