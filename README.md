@@ -1,23 +1,24 @@
 # ClipVault
 
-ClipVault is a modern lightweight Windows clipboard manager with encrypted local history, saved note snippets, OCR, smart preview actions, and a fast quick-paste popup.
+ClipVault is a modern lightweight Windows clipboard manager with encrypted local history, saved note snippets, OCR, smart preview actions, and a fast Windows-style quick-paste popup.
 
 It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, lets you save reusable notes/snippets, and keeps all content local.
 
 ## Screenshots
 
-<img width="1178" height="829" alt="1" src="https://github.com/user-attachments/assets/05664441-eb9d-4215-a776-23f22fcf1728" />
+![ClipVault main window](ss/1.png)
 
-<img width="370" height="539" alt="2" src="https://github.com/user-attachments/assets/c8557637-ff20-4799-940f-31526aec3268" />
+![ClipVault quick paste popup](ss/2.png)
 
 ## Features
 
 - Text and image clipboard history.
 - Searchable timeline with source metadata, tags, pins, and SQLite FTS indexing.
-- Windows-style quick paste popup with draggable dark UI, keyboard navigation, fuzzy search, and grouped clipboard/notes results.
+- Windows-style quick paste popup with compact dark UI, bottom-center placement, keyboard navigation, fuzzy search, right-click paste options, and grouped clipboard/notes results.
 - Default global shortcut: `Ctrl+Shift+V`.
 - System tray menu for opening ClipVault, opening quick paste, pausing/resuming capture, opening Settings, and quitting.
 - Window behavior settings for close-to-tray, minimize-to-tray, start minimized, and launch on Windows startup.
+- Polished Windows window behavior with no console window, tray-first close/minimize support, and stable reopen behavior.
 - Notes as saved snippets, stored in the same encrypted item system as clipboard entries.
 - Saved snippet collections backed by tags: work, code, emails, prompts, and personal.
 - Favorite note templates: meeting note, todo, code snippet, prompt, and email reply.
@@ -33,7 +34,7 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
 - Privacy controls for capture pause, excluded apps/window titles, sensitive-value suppression, and retention.
 - Clipboard restore after quick paste for text and images when the prior clipboard content can be read.
 - Encrypted import/export for settings, notes, and pinned clips.
-- Windows GUI release build, so launching the app does not open a console window.
+- Custom app icon for the title bar, taskbar, tray, installer, and in-app branding.
 
 ## Tech Stack
 
@@ -91,6 +92,12 @@ Release outputs are generated under:
 - `src-tauri/target/release/bundle/nsis/ClipVault_0.1.0_x64-setup.exe`
 - `src-tauri/target/release/bundle/msi/ClipVault_0.1.0_x64_en-US.msi`
 
+The app icon is generated from:
+
+- `src-tauri/icons/icon-source.png`
+- `src-tauri/icons/icon.ico`
+- `src/assets/clipvault-icon.png`
+
 ## Verification
 
 Use these before pushing:
@@ -114,7 +121,9 @@ $env:Path = "$env:USERPROFILE\.cargo\bin;C:\Strawberry\perl\bin;C:\Strawberry\c\
 The app is runnable and packaged for Windows. The latest local verification completed successfully for:
 
 - `npm run build`
-- `cargo test --manifest-path src-tauri\Cargo.toml`
+- `cargo fmt --manifest-path src-tauri\Cargo.toml --check`
+- `cargo clippy --manifest-path src-tauri\Cargo.toml -- -D warnings`
+- `cargo test --manifest-path src-tauri\Cargo.toml -- --test-threads=1`
 - `npm run tauri -- build`
 
 ## Roadmap
