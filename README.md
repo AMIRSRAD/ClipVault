@@ -6,9 +6,9 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
 
 ## Screenshots
 
-![ClipVault main window](docs/assets/main-window.png)
+<img width="1178" height="829" alt="1" src="https://github.com/user-attachments/assets/05664441-eb9d-4215-a776-23f22fcf1728" />
 
-![ClipVault quick paste popup](docs/assets/quick-paste-popup.png)
+<img width="370" height="539" alt="2" src="https://github.com/user-attachments/assets/c8557637-ff20-4799-940f-31526aec3268" />
 
 ## Features
 
