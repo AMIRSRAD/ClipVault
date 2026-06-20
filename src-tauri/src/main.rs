@@ -10,6 +10,7 @@ mod privacy;
 mod storage;
 mod window_anim;
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -27,6 +28,9 @@ pub struct AppState {
     pause_until: Arc<Mutex<Option<DateTime<Utc>>>>,
     paste_target: Arc<Mutex<Option<isize>>>,
     palette_drag_until: Arc<Mutex<Option<DateTime<Utc>>>>,
+    main_show_grace_until: Arc<Mutex<Option<DateTime<Utc>>>>,
+    palette_focus_grace_until: Arc<Mutex<Option<DateTime<Utc>>>>,
+    palette_generation: Arc<AtomicU64>,
 }
 
 impl AppState {
@@ -36,6 +40,9 @@ impl AppState {
             pause_until: Arc::new(Mutex::new(None)),
             paste_target: Arc::new(Mutex::new(None)),
             palette_drag_until: Arc::new(Mutex::new(None)),
+            main_show_grace_until: Arc::new(Mutex::new(None)),
+            palette_focus_grace_until: Arc::new(Mutex::new(None)),
+            palette_generation: Arc::new(AtomicU64::new(0)),
         }
     }
 }
@@ -122,7 +129,8 @@ pub fn run() {
                         .unwrap_or(true)
                     {
                         api.prevent_close();
-                        hide_event_window(window, 120);
+                        clear_main_show_grace(window.app_handle());
+                        let _ = window.hide();
                     }
                 }
 
@@ -134,6 +142,7 @@ pub fn run() {
                         .settings()
                         .map(|settings| settings.minimize_to_tray)
                         .unwrap_or(true)
+                    && !main_show_grace_active(window.app_handle())
                     && window.is_minimized().unwrap_or(false)
                 {
                     hide_event_window(window, 120);
@@ -144,8 +153,9 @@ pub fn run() {
             if window.label() == "palette"
                 && matches!(event, WindowEvent::Focused(false))
                 && !palette_drag_grace_active(window.app_handle())
+                && !palette_focus_grace_active(window.app_handle())
             {
-                hide_event_window(window, 0);
+                hide_event_window(window, 90);
             }
         })
         .run(tauri::generate_context!())
@@ -228,15 +238,15 @@ fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
 
 fn show_palette(app: &AppHandle) {
     remember_paste_target(app);
+    let generation = next_palette_generation(app);
+    mark_palette_focus_grace(app);
 
     if let Some(window) = app.get_webview_window("palette") {
-        let _ = window.unminimize();
-        let _ = window.set_always_on_top(true);
-        position_palette_bottom_center(&window);
-        let _ = window.show();
-        let _ = window.set_focus();
+        show_palette_window(&window);
         let _ = window.emit("palette-opened", ());
     }
+
+    retry_show_palette(app, generation);
 }
 
 fn position_palette_bottom_center(window: &WebviewWindow) {
@@ -268,16 +278,65 @@ fn position_palette_bottom_center(window: &WebviewWindow) {
 
 fn show_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        window_anim::show(&window, 120);
-        let _ = window.unminimize();
-        let _ = window.set_always_on_top(true);
-        let _ = window.set_focus();
-        let _ = window.set_always_on_top(false);
+        show_main_window_handle(app, &window);
     }
 
-    if let Some(window) = app.get_webview_window("palette") {
-        let _ = window.hide();
+    if app.get_webview_window("palette").is_some() {
+        hide_palette_window(app, 90);
     }
+}
+
+pub(crate) fn show_main_window_handle(app: &AppHandle, window: &WebviewWindow) {
+    mark_main_show_grace(app);
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_always_on_top(true);
+    let _ = window.set_focus();
+    let _ = window.set_always_on_top(false);
+}
+
+fn retry_show_palette(app: &AppHandle, generation: u64) {
+    for delay_ms in [40, 120, 240] {
+        let app_handle = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(delay_ms));
+            if current_palette_generation(&app_handle) != generation {
+                return;
+            }
+
+            if let Some(window) = app_handle.get_webview_window("palette") {
+                show_palette_window(&window);
+            }
+        });
+    }
+}
+
+fn show_palette_window(window: &WebviewWindow) {
+    let _ = window.unminimize();
+    let _ = window.set_always_on_top(true);
+    position_palette_bottom_center(window);
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
+pub(crate) fn hide_palette_window(app: &AppHandle, duration_ms: u32) {
+    let hide_generation = next_palette_generation(app);
+
+    if let Some(window) = app.get_webview_window("palette") {
+        let _ = window.emit("palette-closing", ());
+    }
+
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(duration_ms as u64));
+        if current_palette_generation(&app_handle) != hide_generation {
+            return;
+        }
+
+        if let Some(window) = app_handle.get_webview_window("palette") {
+            let _ = window.hide();
+        }
+    });
 }
 
 fn remember_paste_target(app: &AppHandle) {
@@ -308,9 +367,63 @@ fn palette_drag_grace_active(app: &AppHandle) -> bool {
     false
 }
 
+pub(crate) fn mark_main_show_grace(app: &AppHandle) {
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut show_grace_until) = state.main_show_grace_until.lock() {
+            *show_grace_until = Some(Utc::now() + chrono::Duration::milliseconds(180));
+        }
+    }
+}
+
+fn clear_main_show_grace(app: &AppHandle) {
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut show_grace_until) = state.main_show_grace_until.lock() {
+            *show_grace_until = None;
+        }
+    }
+}
+
+fn main_show_grace_active(app: &AppHandle) -> bool {
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut show_grace_until) = state.main_show_grace_until.lock() {
+            if let Some(until) = show_grace_until.as_ref() {
+                if *until > Utc::now() {
+                    return true;
+                }
+            }
+            *show_grace_until = None;
+        }
+    }
+
+    false
+}
+
+fn mark_palette_focus_grace(app: &AppHandle) {
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut focus_grace_until) = state.palette_focus_grace_until.lock() {
+            *focus_grace_until = Some(Utc::now() + chrono::Duration::milliseconds(240));
+        }
+    }
+}
+
+fn palette_focus_grace_active(app: &AppHandle) -> bool {
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut focus_grace_until) = state.palette_focus_grace_until.lock() {
+            if let Some(until) = focus_grace_until.as_ref() {
+                if *until > Utc::now() {
+                    return true;
+                }
+            }
+            *focus_grace_until = None;
+        }
+    }
+
+    false
+}
+
 fn hide_event_window(window: &Window, duration_ms: u32) {
-    if duration_ms == 0 {
-        let _ = window.hide();
+    if window.label() == "palette" {
+        hide_palette_window(window.app_handle(), duration_ms);
         return;
     }
 
@@ -320,4 +433,16 @@ fn hide_event_window(window: &Window, duration_ms: u32) {
     }
 
     let _ = window.hide();
+}
+
+pub(crate) fn next_palette_generation(app: &AppHandle) -> u64 {
+    app.try_state::<AppState>()
+        .map(|state| state.palette_generation.fetch_add(1, Ordering::SeqCst) + 1)
+        .unwrap_or(0)
+}
+
+pub(crate) fn current_palette_generation(app: &AppHandle) -> u64 {
+    app.try_state::<AppState>()
+        .map(|state| state.palette_generation.load(Ordering::SeqCst))
+        .unwrap_or(0)
 }

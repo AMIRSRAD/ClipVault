@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
-import clipvaultIcon from "./assets/clipvault-icon.svg";
+import clipvaultIcon from "./assets/clipvault-icon.png";
 import {
   closePalette,
   createNote,
@@ -874,7 +874,6 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
   const [active, setActive] = useState(0);
   const [mode, setMode] = useState<"all" | "text" | "image" | "note" | "pinned">("all");
   const [contextMenu, setContextMenu] = useState<PaletteContextMenu>(null);
-  const [isOpening, setIsOpening] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
   const sectionTitle = mode === "note" ? "Notes" : mode === "image" ? "Images" : mode === "text" ? "Text" : mode === "pinned" ? "Pinned" : "Clipboard";
@@ -894,41 +893,30 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
 
   useEffect(() => {
     if (!embedded || !("__TAURI_INTERNALS__" in window)) return;
-    let unlisten: (() => void) | undefined;
-    let animationTimer: number | undefined;
+    let unlistenOpened: (() => void) | undefined;
+    let unlistenClosing: (() => void) | undefined;
 
     import("@tauri-apps/api/event")
-      .then(({ listen }) =>
-        listen("palette-opened", () => {
+      .then(async ({ listen }) => {
+        unlistenOpened = await listen("palette-opened", () => {
           setQuery("");
           setMode("all");
           setActive(0);
           setContextMenu(null);
           setIsClosing(false);
-          setIsOpening(false);
-          requestAnimationFrame(() => {
-            setIsOpening(true);
-            window.clearTimeout(animationTimer);
-            animationTimer = window.setTimeout(() => setIsOpening(false), 150);
-          });
-        })
-      )
-      .then((cleanup) => {
-        unlisten = cleanup;
+        });
+
+        unlistenClosing = await listen("palette-closing", () => {
+          setContextMenu(null);
+          setIsClosing(true);
+        });
       })
       .catch(() => undefined);
 
     return () => {
-      unlisten?.();
-      window.clearTimeout(animationTimer);
+      unlistenOpened?.();
+      unlistenClosing?.();
     };
-  }, [embedded]);
-
-  useEffect(() => {
-    if (embedded) return;
-    setIsOpening(true);
-    const timer = window.setTimeout(() => setIsOpening(false), 150);
-    return () => window.clearTimeout(timer);
   }, [embedded]);
 
   useEffect(() => {
@@ -978,7 +966,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
           setContextMenu(null);
           return;
         }
-        void closeWithAnimation();
+        onClose();
       }
       if (event.key === "ArrowDown") setActive((value) => Math.min(value + 1, displayItems.length - 1));
       if (event.key === "ArrowUp") setActive((value) => Math.max(value - 1, 0));
@@ -1007,17 +995,8 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
     return () => window.removeEventListener("keydown", handle);
   }, [active, contextMenu, displayItems, onClose]);
 
-  async function closeWithAnimation() {
-    setContextMenu(null);
-    setIsOpening(false);
-    setIsClosing(true);
-    await new Promise((resolve) => window.setTimeout(resolve, 110));
-    await onClose();
-    setIsClosing(false);
-  }
-
   async function pasteAndClose(id: string) {
-    await closeWithAnimation();
+    await onClose();
     try {
       await pasteItem(id);
     } catch (error) {
@@ -1028,7 +1007,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
   async function pasteTransformedAndClose(item: ClipboardItem, transform: PasteTransform) {
     const transformed = transformText(smartText(item), transform);
     if (transformed === null) return;
-    await closeWithAnimation();
+    await onClose();
     try {
       await pasteText(transformed);
     } catch (error) {
@@ -1073,7 +1052,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
 
   return (
     <div className={embedded ? "palette-root embedded" : "palette-backdrop"}>
-      <div className={`${embedded ? "palette-panel embedded" : "palette-panel"} ${isOpening ? "opening" : ""} ${isClosing ? "closing" : ""}`}>
+      <div className={`${embedded ? "palette-panel embedded" : "palette-panel"} ${isClosing ? "closing" : ""}`}>
         <div className="palette-drag-strip" title="Drag popup" aria-label="Drag quick paste popup" onMouseDown={(event) => startPaletteDrag(event, embedded)}>
           <span />
         </div>
@@ -1084,7 +1063,7 @@ function PaletteOverlay({ onClose, embedded = false }: { onClose: () => void | P
               <SquareArrowOutUpRight size={15} />
               <span>Open app</span>
             </button>
-            <button className="palette-close" onClick={() => void closeWithAnimation()} title="Close">
+            <button className="palette-close" onClick={onClose} title="Close">
               <X size={17} />
             </button>
           </div>
