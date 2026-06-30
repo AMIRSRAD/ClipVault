@@ -47,6 +47,12 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
 - Windows DPAPI for protecting local encryption material and backup payloads
 - Windows clipboard, global shortcut, paste simulation, and OCR integrations
 
+## Creator And License
+
+- Creator: Amirsalar Saberi rad
+- Website: [amirsrad.ir](https://amirsrad.ir)
+- License: Copyright Amirsalar Saberi rad. All rights reserved.
+
 ## Requirements
 
 - Windows 10/11.

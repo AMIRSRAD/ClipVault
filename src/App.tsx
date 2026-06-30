@@ -855,6 +855,28 @@ function SettingsPanel({ settings, onChange }: { settings: AppSettings; onChange
             {backupStatus && <small className="backup-status">{backupStatus}</small>}
           </div>
         </div>
+        <div className="setting-row wide info-row">
+          <span>Info</span>
+          <dl className="info-list">
+            <div>
+              <dt>Creator</dt>
+              <dd>Amirsalar Saberi rad</dd>
+            </div>
+            <div>
+              <dt>Website</dt>
+              <dd>
+                <button className="link-button" onClick={() => openExternal("https://amirsrad.ir")}>
+                  <ExternalLink size={14} />
+                  amirsrad.ir
+                </button>
+              </dd>
+            </div>
+            <div>
+              <dt>License</dt>
+              <dd>Copyright Amirsalar Saberi rad. All rights reserved.</dd>
+            </div>
+          </dl>
+        </div>
       </div>
     </section>
   );

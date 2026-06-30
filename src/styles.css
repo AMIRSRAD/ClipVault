@@ -715,6 +715,52 @@ textarea:focus-visible,
   line-height: 1.4;
 }
 
+.info-row {
+  align-content: start;
+}
+
+.info-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.info-list div {
+  display: grid;
+  grid-template-columns: minmax(90px, 140px) 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.info-list dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.info-list dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--accent-border);
+}
+
 .file-button {
   position: relative;
   overflow: hidden;
