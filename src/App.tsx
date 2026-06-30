@@ -10,6 +10,7 @@ import {
   FolderOpen,
   Globe,
   Image,
+  Info,
   Keyboard,
   ListChecks,
   Mail,
@@ -52,7 +53,7 @@ import {
 } from "./api";
 import type { AppSettings, ClipboardFilters, ClipboardItem, OcrResponse } from "./types";
 
-type ViewKey = "all" | "pinned" | "text" | "images" | "notes" | "tags" | "settings";
+type ViewKey = "all" | "pinned" | "text" | "images" | "notes" | "tags" | "settings" | "info";
 type ViewGroup = "clipboard" | "saved" | "utility";
 type PasteTransform = "plain" | "trim" | "singleLine" | "upper" | "lower" | "title" | "jsonPretty" | "jsonMinify";
 type PaletteContextMenu = { item: ClipboardItem; x: number; y: number } | null;
@@ -64,7 +65,8 @@ const viewLabels: Array<{ key: ViewKey; label: string; icon: typeof Clipboard; g
   { key: "images", label: "Images", icon: Image, group: "clipboard" },
   { key: "notes", label: "Notes", icon: NotebookPen, group: "saved" },
   { key: "tags", label: "Tags", icon: Tags, group: "utility" },
-  { key: "settings", label: "Settings", icon: Settings, group: "utility" }
+  { key: "settings", label: "Settings", icon: Settings, group: "utility" },
+  { key: "info", label: "Info", icon: Info, group: "utility" }
 ];
 
 const noteTemplates = [
@@ -432,6 +434,8 @@ function MainShell() {
 
         {view === "settings" && settings ? (
           <SettingsPanel settings={settings} onChange={setSettings} />
+        ) : view === "info" ? (
+          <InfoPanel />
         ) : (
           <section className="content-grid">
             <div className="timeline">
@@ -855,8 +859,21 @@ function SettingsPanel({ settings, onChange }: { settings: AppSettings; onChange
             {backupStatus && <small className="backup-status">{backupStatus}</small>}
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function InfoPanel() {
+  return (
+    <section className="settings-page">
+      <div className="settings-header">
+        <h1>Info</h1>
+        <p>Creator, website, and license details for ClipVault.</p>
+      </div>
+      <div className="settings-grid">
         <div className="setting-row wide info-row">
-          <span>Info</span>
+          <span>ClipVault</span>
           <dl className="info-list">
             <div>
               <dt>Creator</dt>
