@@ -6,7 +6,7 @@ ClipVault is a Windows-first Tauri desktop app. Rust owns OS integration and per
 
 ## Frontend
 
-- `src/App.tsx` contains the main shell, settings view, detail panel, notes workflow, and quick paste popup.
+- `src/App.tsx` contains the main shell, settings view, Info view, detail panel, notes workflow, and quick paste popup.
 - `src/api.ts` wraps Tauri commands and browser-demo fallbacks.
 - `src/types.ts` defines shared frontend models.
 - `src/styles.css` contains the dark Windows-inspired UI system for both the main app and popup.
@@ -16,7 +16,13 @@ Main views:
 
 - Clipboard categories: All, Pinned, Text, Images.
 - Saved content: Notes.
-- Utility: Tags, Settings.
+- Utility: Tags, Settings, Info.
+
+The Info view displays creator, website, and license ownership details:
+
+- Creator: Amirsalar Saberi rad.
+- Website: `https://amirsrad.ir`.
+- License: all rights reserved by Amirsalar Saberi rad.
 
 The quick paste popup groups saved notes separately from clipboard captures and uses local fuzzy reranking over a recent item pool for typo-tolerant search.
 
@@ -52,6 +58,10 @@ Search indexing uses SQLite FTS over text, OCR text, tags, source app, and sourc
 The local SQLite database is protected with SQLCipher. The database key is generated locally and protected with Windows DPAPI for the current user.
 
 Backup export/import uses a `clipvault-dpapi-v1:` text payload. It includes settings, notes, and pinned clips, then protects the serialized payload with DPAPI. These backups are intended for the same Windows user profile unless the format is later extended.
+
+## Ownership And Licensing
+
+ClipVault is proprietary software owned by Amirsalar Saberi rad. The root `LICENSE` file is the source of truth for repository licensing and currently states that all rights are reserved.
 
 ## OS Integration
 

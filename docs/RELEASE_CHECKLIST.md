@@ -5,6 +5,8 @@ Use this checklist before pushing or cutting a local Windows build.
 ## Clean Working Tree
 
 - Confirm only source, config, docs, icons, and lockfiles are staged.
+- Confirm README screenshots under `ss/` render correctly on GitHub.
+- Confirm the root `LICENSE` file is present when license or ownership text changes.
 - Do not stage:
   - `node_modules/`
   - `dist/`
@@ -51,6 +53,8 @@ npm run tauri -- build
 - Try smart actions on URL, JSON, email, code, and file path text.
 - Export a backup from Settings.
 - Import the backup and confirm the app reports imported items.
+- Open the Info tab and confirm creator, website, and license text are correct.
+- Click the Info tab website link and confirm it opens `https://amirsrad.ir`.
 
 ## Release Outputs
 

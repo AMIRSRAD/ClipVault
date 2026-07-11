@@ -19,6 +19,7 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
 - System tray menu for opening ClipVault, opening quick paste, pausing/resuming capture, opening Settings, and quitting.
 - Window behavior settings for close-to-tray, minimize-to-tray, start minimized, and launch on Windows startup.
 - Polished Windows window behavior with no console window, tray-first close/minimize support, and stable reopen behavior.
+- Dedicated Info tab for creator, website, and license ownership details.
 - Notes as saved snippets, stored in the same encrypted item system as clipboard entries.
 - Saved snippet collections backed by tags: work, code, emails, prompts, and personal.
 - Favorite note templates: meeting note, todo, code snippet, prompt, and email reply.
@@ -52,6 +53,8 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
 - Creator: Amirsalar Saberi rad
 - Website: [amirsrad.ir](https://amirsrad.ir)
 - License: Copyright Amirsalar Saberi rad. All rights reserved.
+
+The repository includes a root `LICENSE` file with the same all-rights-reserved ownership notice.
 
 ## Requirements
 
