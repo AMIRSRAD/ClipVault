@@ -6,9 +6,9 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
 
 ## Screenshots
 
-![ClipVault main window](ss/1.png)
+![ClipVault main window with example clipboard items](docs/assets/main-window.png)
 
-![ClipVault quick paste popup](ss/2.png)
+![ClipVault quick paste popup with example items](docs/assets/quick-paste-popup.png)
 
 ## Features
 
@@ -60,39 +60,40 @@ The repository includes a root `LICENSE` file with the same all-rights-reserved 
 
 - Windows 10/11.
 - Node.js 20+.
-- npm 10+.
+- pnpm 10.16.1 (Corepack reads the pinned version from `package.json`).
 - Rust and Cargo through rustup.
 - Microsoft C++ Build Tools.
 - Microsoft Edge WebView2 runtime.
-- Strawberry Perl, needed by the vendored native crypto/SQLCipher build on this machine.
+- Strawberry Perl, used by the vendored OpenSSL build for SQLCipher.
 
 ## Install
 
 ```powershell
-npm install
+corepack enable
+pnpm install --frozen-lockfile
 ```
 
-This project currently includes a `pnpm-lock.yaml` from earlier setup, but the active scripts and latest verification use npm.
+For end users, download and run the `*-setup.exe` installer from the [GitHub Releases](https://github.com/AMIRSRAD/ClipVault/releases) page. The NSIS installer installs for the current Windows user and creates a Start Menu shortcut. ClipVault does not enable startup launch during installation. To enable it later, open **Settings → Launch on Windows startup**; this adds a per-user Run entry. Turning the option off or uninstalling ClipVault removes that entry. Windows may show its normal publisher reputation prompt for an unsigned installer.
 
 ## Development
 
 Run the frontend only:
 
 ```powershell
-npm run dev
+pnpm dev
 ```
 
 Run the full Tauri desktop app:
 
 ```powershell
-npm run tauri -- dev
+pnpm tauri dev
 ```
 
 ## Build
 
 ```powershell
-npm run build
-npm run tauri -- build
+pnpm build
+pnpm tauri build
 ```
 
 Release outputs are generated under:
@@ -109,31 +110,21 @@ The app icon is generated from:
 
 ## Verification
 
-Use these before pushing:
+Use these before cutting a Windows release:
 
 ```powershell
-npm run build
+pnpm build
 cargo test --manifest-path src-tauri/Cargo.toml
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
-npm run tauri -- build
+pnpm tauri build
 ```
 
-If Cargo is not on PATH in PowerShell, prepend the local toolchain paths first:
+If Cargo or native dependencies are not on PATH in PowerShell, prepend the local toolchain paths first:
 
 ```powershell
 $env:Path = "$env:USERPROFILE\.cargo\bin;C:\Strawberry\perl\bin;C:\Strawberry\c\bin;C:\Strawberry\perl\site\bin;$env:Path"
 ```
-
-## Current Status
-
-The app is runnable and packaged for Windows. The latest local verification completed successfully for:
-
-- `npm run build`
-- `cargo fmt --manifest-path src-tauri\Cargo.toml --check`
-- `cargo clippy --manifest-path src-tauri\Cargo.toml -- -D warnings`
-- `cargo test --manifest-path src-tauri\Cargo.toml -- --test-threads=1`
-- `npm run tauri -- build`
 
 ## Roadmap
 
