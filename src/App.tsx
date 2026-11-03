@@ -7,7 +7,9 @@ import {
   deleteItem,
   getItem,
   getSettings,
+  installUpdate,
   pasteItem,
+  pendingUpdate,
   pauseCapture,
   pinItem,
   resumeCapture,
@@ -22,7 +24,7 @@ import { InfoPanel, SettingsPanel } from "./components/SettingsPanel";
 import { Sidebar } from "./components/Sidebar";
 import type { ViewKey } from "./components/Sidebar";
 import { isTauriRuntime } from "./lib/clip";
-import type { AppSettings, ClipboardFilters, ClipboardItem } from "./types";
+import type { AppSettings, ClipboardFilters, ClipboardItem, UpdateInfo } from "./types";
 
 const noteTemplates: NoteTemplate[] = [
   { label: "Meeting notes", icon: NotebookPen, tags: ["meeting"], text: "Meeting notes\n\nDate:\nAttendees:\n\nAgenda:\n- \n\nNotes:\n- \n\nAction items:\n- " },
@@ -84,6 +86,8 @@ function MainShell() {
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null);
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
   const toastTimer = useRef<number>();
 
@@ -123,6 +127,21 @@ function MainShell() {
     window.addEventListener("focus", refreshPaused);
     return () => window.removeEventListener("focus", refreshPaused);
   }, [refreshPaused]);
+
+  useEffect(() => {
+    pendingUpdate()
+      .then(setUpdate)
+      .catch(() => undefined);
+    if (!isTauriRuntime()) return;
+    let unlisten: (() => void) | undefined;
+    import("@tauri-apps/api/event")
+      .then(({ listen }) => listen<UpdateInfo>("update-ready", (event) => setUpdate(event.payload)))
+      .then((cleanup) => {
+        unlisten = cleanup;
+      })
+      .catch(() => undefined);
+    return () => unlisten?.();
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(loadItems, query ? 120 : 0);
@@ -233,6 +252,15 @@ function MainShell() {
     }
   }
 
+  async function handleInstallUpdate() {
+    try {
+      showToast("Installing update…");
+      await installUpdate();
+    } catch (error) {
+      showToast(typeof error === "string" ? error : "Couldn't install the update");
+    }
+  }
+
   async function handleTogglePause() {
     if (paused) await resumeCapture();
     else await pauseCapture(null);
@@ -267,6 +295,9 @@ function MainShell() {
         retentionDays={settings?.retentionDays ?? null}
         hotkey={settings?.hotkey ?? "Ctrl+Shift+V"}
         onQuickPaste={() => setPaletteOpen(true)}
+        update={update && dismissedUpdate !== update.version ? update : null}
+        onInstallUpdate={handleInstallUpdate}
+        onDismissUpdate={() => update && setDismissedUpdate(update.version)}
       />
 
       <main className="content">
@@ -281,9 +312,9 @@ function MainShell() {
           </div>
         )}
         {view === "settings" ? (
-          settings && <SettingsPanel settings={settings} onChange={setSettings} onToast={showToast} />
+          settings && <SettingsPanel settings={settings} onChange={setSettings} onToast={showToast} update={update} onUpdateFound={setUpdate} />
         ) : view === "info" ? (
-          <InfoPanel />
+          <InfoPanel update={update} onUpdateFound={setUpdate} onToast={showToast} />
         ) : (
           <div className="browser">
             <ClipList

@@ -21,9 +21,10 @@ Screenshots use sample data. The interface follows your Windows light/dark setti
 - Text and image clipboard history.
 - Searchable timeline with source metadata, tags, pins, and SQLite FTS indexing.
 - Windows 11 (Fluent) style interface that follows the system light/dark theme.
-- Quick paste popup with bottom-center placement, fuzzy search, section tabs, image previews, right-click paste options, and grouped notes/clipboard results.
+- A minimal quick paste popup: search first, light section tabs, a flat list with image thumbnails, hover actions, right-click paste-as options, and pinned items on top. It opens as a native rounded Windows 11 flyout at the bottom center of your screen.
 - Keyboard-first: `↑`/`↓` to move, `Enter` to paste, `Ctrl+C` to copy, `Ctrl+P` to pin, `Tab` or `Alt+1-5` to switch sections in quick paste; `Ctrl+F` to search, `P` to pin, `Delete` to remove, and `Ctrl+N` for a new note in the main window.
 - Default global shortcut: `Ctrl+Shift+V`.
+- Quiet automatic updates: ClipVault checks once a day, downloads signed updates in the background, and only shows a small "Update ready" card in the sidebar. Nothing is installed until you click Restart, and it can be turned off in Settings.
 - System tray menu for opening ClipVault, opening quick paste, pausing/resuming capture, opening Settings, and quitting.
 - Window behavior settings for close-to-tray, minimize-to-tray, start minimized, and launch on Windows startup (starts hidden in the tray).
 - Polished Windows window behavior with no console window, tray-first close/minimize support, and stable reopen behavior.
@@ -76,7 +77,7 @@ The repository includes a root `LICENSE` file with the same all-rights-reserved 
 
 ## Install
 
-Download `ClipVault_1.0.1_x64-setup.exe` from the [latest release](https://github.com/AMIRSRAD/ClipVault/releases/latest) and run it. No administrator rights are needed; it installs for the current Windows user.
+Download `ClipVault_1.1.0_x64-setup.exe` from the [latest release](https://github.com/AMIRSRAD/ClipVault/releases/latest) and run it. No administrator rights are needed; it installs for the current Windows user.
 
 The installer:
 
@@ -85,15 +86,15 @@ The installer:
 - Asks whether to start ClipVault when you sign in to Windows. If you say yes, it starts quietly in the system tray.
 - Registers ClipVault in **Settings → Apps → Installed apps** so Windows can uninstall it. The uninstaller can also delete your saved history and key.
 
-Upgrading is just running a newer installer; your history, notes, and settings are kept.
+Upgrading is just running a newer installer (or clicking **Restart** on the in-app update card); your history, notes, and settings are kept.
 
 You can change startup behavior any time in **Settings → Window → Launch on Windows startup**. The installer is unsigned, so Windows SmartScreen may show a reputation warning; choose **More info → Run anyway**. An MSI is also published for managed deployments.
 
 ### Silent install
 
 ```powershell
-.\ClipVault_1.0.1_x64-setup.exe /S
-.\ClipVault_1.0.1_x64-setup.exe /S /D=D:\Apps\ClipVault   # custom folder; /D must be last
+.\ClipVault_1.1.0_x64-setup.exe /S
+.\ClipVault_1.1.0_x64-setup.exe /S /D=D:\Apps\ClipVault   # custom folder; /D must be last
 ```
 
 Silent installs create the Start Menu and desktop shortcuts and do not enable startup.
@@ -129,8 +130,8 @@ pnpm tauri build
 Release outputs are generated under:
 
 - `src-tauri/target/release/clipvault.exe`
-- `src-tauri/target/release/bundle/nsis/ClipVault_1.0.1_x64-setup.exe`
-- `src-tauri/target/release/bundle/msi/ClipVault_1.0.1_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/ClipVault_1.1.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/ClipVault_1.1.0_x64_en-US.msi`
 
 The app icon is generated from:
 
@@ -156,6 +157,15 @@ If Cargo or native dependencies are not on PATH in PowerShell, prepend the local
 $env:Path = "$env:USERPROFILE\.cargo\bin;C:\Strawberry\perl\bin;C:\Strawberry\c\bin;C:\Strawberry\perl\site\bin;$env:Path"
 ```
 
+## Updates
+
+ClipVault updates itself without getting in the way:
+
+- Once a day (and a minute after launch) it asks GitHub for the latest release. The check is a single small request and is skipped if you turn off **Settings -> Updates -> Download updates automatically**.
+- If a newer version exists, it is downloaded in the background and its signature is verified against the public key built into the app. Updates that aren't signed by the maintainer are rejected.
+- You are never interrupted: no pop-ups, no sounds, no tray notifications. A small **Update ready** card appears in the sidebar; click **Restart** when it suits you, or dismiss it. **Settings** and **About** also have a **Check now** button.
+- Installing shows a short progress window, then ClipVault reopens. Your history is untouched.
+
 ## Performance
 
 ClipVault is built to sit in the system tray all day without costing you anything:
@@ -163,7 +173,7 @@ ClipVault is built to sit in the system tray all day without costing you anythin
 - **Zero idle CPU.** The clipboard is watched through the Windows clipboard listener instead of polling, so the app sleeps until you actually copy something (0 wakeups per second when idle, about 0.05% CPU for the whole process tree).
 - **Low idle memory.** While a window is hidden, its web view is switched to WebView2's low-memory mode, which trims it to roughly 55-95 MB total in the tray (about 550 MB before 1.0.1). The normal level is restored when a window is shown.
 - **Instant quick paste.** Both windows stay loaded, so `Ctrl+Shift+V` shows the popup in a few milliseconds even after hours in the tray.
-- **Nothing runs in the background** besides the clipboard listener: no timers, no network, no telemetry.
+- **Nothing else runs in the background** besides the clipboard listener and the once-a-day update check (a sleeping timer, so no idle wakeups). No telemetry.
 
 ## Roadmap
 

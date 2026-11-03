@@ -8,6 +8,7 @@ mod models;
 mod ocr;
 mod privacy;
 mod storage;
+mod updater;
 mod webview_memory;
 mod window_anim;
 
@@ -55,6 +56,8 @@ pub fn run() {
             show_main_window(app);
         }))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(updater::UpdateState::default())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
@@ -85,7 +88,10 @@ pub fn run() {
             commands::open_external,
             commands::close_palette,
             commands::open_main_window,
-            commands::start_palette_drag
+            commands::start_palette_drag,
+            updater::check_for_update,
+            updater::pending_update,
+            updater::install_update
         ])
         .setup(|app| {
             let storage = Storage::open()?;
@@ -124,6 +130,8 @@ pub fn run() {
             std::thread::spawn(move || {
                 watcher.run();
             });
+
+            updater::spawn_background_checks(app.handle().clone());
 
             Ok(())
         })

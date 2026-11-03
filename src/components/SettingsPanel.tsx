@@ -3,10 +3,22 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { version } from "../../package.json";
 import clipvaultIcon from "../assets/clipvault-icon.png";
-import { exportBackup, getSettings, importBackup, openExternal, updateSettings } from "../api";
-import type { AppSettings } from "../types";
+import { checkForUpdate, exportBackup, getSettings, importBackup, installUpdate, openExternal, updateSettings } from "../api";
+import type { AppSettings, UpdateInfo } from "../types";
 
-export function SettingsPanel({ settings, onChange, onToast }: { settings: AppSettings; onChange: (settings: AppSettings) => void; onToast: (message: string) => void }) {
+export function SettingsPanel({
+  settings,
+  onChange,
+  onToast,
+  update,
+  onUpdateFound
+}: {
+  settings: AppSettings;
+  onChange: (settings: AppSettings) => void;
+  onToast: (message: string) => void;
+  update: UpdateInfo | null;
+  onUpdateFound: (update: UpdateInfo) => void;
+}) {
   async function patch(next: Partial<AppSettings>) {
     try {
       onChange(await updateSettings({ ...settings, ...next }));
@@ -83,6 +95,16 @@ export function SettingsPanel({ settings, onChange, onToast }: { settings: AppSe
           <ToggleRow label="Launch on Windows startup" checked={settings.launchOnStartup} onChange={(value) => patch({ launchOnStartup: value })} />
         </SettingsGroup>
 
+        <SettingsGroup title="Updates">
+          <ToggleRow
+            label="Download updates automatically"
+            description="Checks once a day in the background. Nothing is installed until you choose Restart."
+            checked={settings.autoUpdate}
+            onChange={(value) => patch({ autoUpdate: value })}
+          />
+          <UpdateRow update={update} onUpdateFound={onUpdateFound} onToast={onToast} />
+        </SettingsGroup>
+
         <SettingsGroup title="Backup">
           <SettingRow label="Encrypted backup" description="Notes, pinned clips, and settings. Can only be restored by this Windows account.">
             <div className="row-actions">
@@ -107,6 +129,52 @@ export function SettingsPanel({ settings, onChange, onToast }: { settings: AppSe
         </SettingsGroup>
       </div>
     </section>
+  );
+}
+
+function UpdateRow({ update, onUpdateFound, onToast }: { update: UpdateInfo | null; onUpdateFound: (update: UpdateInfo) => void; onToast: (message: string) => void }) {
+  const [checking, setChecking] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function check() {
+    setChecking(true);
+    setMessage(null);
+    try {
+      const result = await checkForUpdate();
+      if (result.status === "ready") {
+        onUpdateFound({ version: result.version, notes: result.notes });
+      } else if (result.status === "upToDate") {
+        setMessage(`You're up to date (version ${version}).`);
+      } else {
+        setMessage("Couldn't check for updates. Are you online?");
+      }
+    } catch {
+      setMessage("Couldn't check for updates. Are you online?");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function install() {
+    try {
+      await installUpdate();
+    } catch (error) {
+      onToast(typeof error === "string" ? error : "Couldn't install the update");
+    }
+  }
+
+  return (
+    <SettingRow label={update ? `Version ${update.version} is ready` : "Check for updates"} description={update ? "Restarting installs it and reopens ClipVault." : message ?? `You have version ${version}.`}>
+      {update ? (
+        <button className="button accent" onClick={install}>
+          Restart to update
+        </button>
+      ) : (
+        <button className="button" onClick={check} disabled={checking}>
+          {checking ? "Checking…" : "Check now"}
+        </button>
+      )}
+    </SettingRow>
   );
 }
 
@@ -219,7 +287,7 @@ function ListField({ value, onCommit, placeholder }: { value: string[]; onCommit
   );
 }
 
-export function InfoPanel() {
+export function InfoPanel({ update, onUpdateFound, onToast }: { update: UpdateInfo | null; onUpdateFound: (update: UpdateInfo) => void; onToast: (message: string) => void }) {
   return (
     <section className="page">
       <div className="page-inner">
@@ -235,6 +303,10 @@ export function InfoPanel() {
             <span className="version">Version {version}</span>
           </div>
         </div>
+
+        <SettingsGroup title="Updates">
+          <UpdateRow update={update} onUpdateFound={onUpdateFound} onToast={onToast} />
+        </SettingsGroup>
 
         <SettingsGroup title="Details">
           <SettingRow label="Creator">

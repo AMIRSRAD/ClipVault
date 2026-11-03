@@ -1,7 +1,6 @@
-import { Clipboard, Copy, FileText, Image, NotebookPen, Pin, PinOff, Search, SquareArrowOutUpRight, X } from "lucide-react";
+import { ClipboardPaste, Copy, FileText, Image, NotebookPen, Pin, PinOff, Search, SquareArrowOutUpRight, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import clipvaultIcon from "../assets/clipvault-icon.png";
 import { deleteItem, openMainWindow, pasteItem, pasteText, pinItem, searchItems, startPaletteDrag as startNativePaletteDrag } from "../api";
 import { isTauriRuntime, looksLikeCode, pasteTransformActions, previewText, rankPaletteItems, relativeTime, smartText, transformText } from "../lib/clip";
 import type { PasteTransform } from "../lib/clip";
@@ -34,19 +33,22 @@ export function QuickPaste({ onClose, embedded = false }: { onClose: () => void 
   const [contextMenu, setContextMenu] = useState<ContextMenu>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const groups = useMemo(() => {
-    if (mode !== "all") return [{ key: mode, title: modes.find((entry) => entry.key === mode)?.label ?? "", items }];
+    if (mode !== "all") return [{ key: mode, title: "", items }];
+    const pinned = items.filter((item) => item.pinned);
+    const recent = items.filter((item) => !item.pinned);
     return [
-      { key: "notes", title: "Notes", items: items.filter((item) => item.kind === "note") },
-      { key: "clips", title: "Recent", items: items.filter((item) => item.kind !== "note") }
+      { key: "pinned", title: "Pinned", items: pinned },
+      { key: "recent", title: pinned.length ? "Recent" : "", items: recent }
     ].filter((group) => group.items.length > 0);
   }, [items, mode]);
   const displayItems = useMemo(() => groups.flatMap((group) => group.items), [groups]);
   const contextText = contextMenu ? smartText(contextMenu.item) : "";
-  const contextPasteActions = pasteTransformActions.filter((action) => contextText.trim() && action.enabled?.(contextText) !== false);
+  const contextPasteActions = pasteTransformActions.filter((action) => action.key !== "plain" && contextText.trim() && action.enabled?.(contextText) !== false);
 
   useEffect(() => {
     if (!embedded || !isTauriRuntime()) return;
@@ -81,9 +83,10 @@ export function QuickPaste({ onClose, embedded = false }: { onClose: () => void 
     let cancelled = false;
     searchItems({ query: "", filters: modeFilters[mode], limit: 80, offset: 0 }).then((response) => {
       if (cancelled) return;
-      setItems(rankPaletteItems(response.items, query).slice(0, 20));
+      setItems(rankPaletteItems(response.items, query).slice(0, 30));
       setActive(0);
       setContextMenu(null);
+      setLoaded(true);
     });
     return () => {
       cancelled = true;
@@ -91,8 +94,8 @@ export function QuickPaste({ onClose, embedded = false }: { onClose: () => void 
   }, [mode, query, reloadKey]);
 
   useEffect(() => {
-    resultsRef.current?.querySelector(".qp-item.active")?.scrollIntoView({ block: "nearest" });
-  }, [active]);
+    listRef.current?.querySelector(".qp-row.active")?.scrollIntoView({ block: "nearest" });
+  }, [active, items]);
 
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
@@ -193,8 +196,8 @@ export function QuickPaste({ onClose, embedded = false }: { onClose: () => void 
     event.preventDefault();
     event.stopPropagation();
     setActive(index);
-    const width = 200;
-    const height = smartText(item).trim() ? 320 : 100;
+    const width = 188;
+    const height = contextPasteActions.length ? 36 * 3 + 32 + contextPasteActions.length * 32 + 24 : 36 * 3 + 16;
     setContextMenu({
       item,
       x: Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8)),
@@ -212,24 +215,18 @@ export function QuickPaste({ onClose, embedded = false }: { onClose: () => void 
   return (
     <div className={embedded ? "qp-root embedded" : "qp-backdrop"} onMouseDown={embedded ? undefined : (event) => event.target === event.currentTarget && onClose()}>
       <div className={`qp${embedded ? " embedded" : ""}${isClosing ? " closing" : ""}`} role="dialog" aria-label="Quick paste">
-        <header className="qp-header" onMouseDown={(event) => startPaletteDrag(event, embedded)}>
-          <div className="qp-title">
-            <img src={clipvaultIcon} alt="" />
-            <span>Clipboard</span>
-          </div>
-          <div className="qp-header-actions">
-            <button className="qp-icon" onClick={() => openMainWindow()} title="Open ClipVault" aria-label="Open ClipVault">
-              <SquareArrowOutUpRight size={14} />
-            </button>
-            <button className="qp-icon" onClick={() => onClose()} title="Close (Esc)" aria-label="Close">
-              <X size={15} />
-            </button>
-          </div>
-        </header>
+        <div className="qp-grab" onMouseDown={(event) => startPaletteDrag(event, embedded)} title="Drag to move">
+          <span />
+        </div>
 
         <div className="qp-search">
-          <Search size={15} />
-          <input ref={searchRef} autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your clipboard" aria-label="Search" />
+          <Search size={16} strokeWidth={2} />
+          <input ref={searchRef} autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your clipboard" aria-label="Search" spellCheck={false} />
+          {query && (
+            <button className="qp-clear" onClick={() => setQuery("")} aria-label="Clear search">
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         <div className="qp-tabs" role="tablist">
@@ -240,68 +237,77 @@ export function QuickPaste({ onClose, embedded = false }: { onClose: () => void 
           ))}
         </div>
 
-        <div className="qp-results" ref={resultsRef} role="listbox">
+        <div className="qp-list" ref={listRef} role="listbox">
           {groups.length === 0 ? (
-            <div className="qp-empty">
-              <Clipboard size={20} />
-              <strong>{query ? "No matches" : "Nothing here yet"}</strong>
-              <span>{query ? "Try a different search." : "Copy something and it will show up here."}</span>
-            </div>
+            loaded && (
+              <div className="qp-empty">
+                <ClipboardPaste size={22} strokeWidth={1.6} />
+                <strong>{query ? "No matches" : mode === "all" ? "Nothing copied yet" : `No ${modes.find((entry) => entry.key === mode)?.label.toLowerCase()}`}</strong>
+                <span>{query ? "Try a different search." : "Things you copy will show up here."}</span>
+              </div>
+            )
           ) : (
             groups.map((group) => (
               <section key={group.key} className="qp-group">
-                {groups.length > 1 && <div className="qp-group-label">{group.title}</div>}
+                {group.title && <div className="qp-label">{group.title}</div>}
                 {group.items.map((item) => {
                   const index = runningIndex++;
                   const text = previewText(item).replace(/\n\s*\n+/g, "\n");
-                  const KindIcon = item.kind === "note" ? NotebookPen : item.kind === "image" ? Image : FileText;
+                  const isImage = item.kind === "image";
+                  const KindIcon = item.kind === "note" ? NotebookPen : isImage ? Image : FileText;
+                  const sub = item.kind === "note" ? "Note" : item.sourceApp ?? "Unknown app";
                   return (
                     <div
                       key={item.id}
                       role="option"
                       aria-selected={index === active}
-                      className={`qp-item${index === active ? " active" : ""}${item.kind === "note" ? " note" : ""}`}
+                      className={`qp-row${index === active ? " active" : ""}${item.kind === "note" ? " note" : ""}`}
                       onMouseMove={() => index !== active && setActive(index)}
                       onClick={() => pasteAndClose(item.id)}
                       onContextMenu={(event) => openContextMenu(event, item, index)}
                     >
-                      {item.kind === "image" && item.imageUrl ? (
-                        <div className="qp-image">
+                      {isImage && item.imageUrl ? (
+                        <div className="qp-thumb">
                           <img src={item.imageUrl} alt="" />
                         </div>
                       ) : (
-                        <p className={looksLikeCode(text) ? "qp-text mono" : "qp-text"}>{text}</p>
+                        <div className="qp-lead">
+                          <KindIcon size={15} strokeWidth={1.9} />
+                        </div>
                       )}
-                      <div className="qp-meta">
-                        <KindIcon size={12} />
-                        <span className="qp-source">{item.kind === "note" ? "Note" : item.sourceApp ?? "Unknown app"}</span>
-                        <span>· {relativeTime(item.createdAt)}</span>
-                        {item.pinned && <Pin className="qp-pinned" size={11} aria-label="Pinned" />}
+                      <div className="qp-main">
+                        <p className={looksLikeCode(text) ? "qp-text mono" : "qp-text"}>{isImage && !item.ocrText ? "Image" : text}</p>
+                        <span className="qp-sub">
+                          {sub} · {relativeTime(item.createdAt)}
+                        </span>
                       </div>
-                      <div className="qp-item-actions">
-                        <button
-                          className="qp-icon"
-                          title="Copy"
-                          aria-label="Copy"
-                          disabled={!smartText(item)}
-                          onClick={async (event) => {
-                            stop(event);
-                            await navigator.clipboard?.writeText(smartText(item));
-                          }}
-                        >
-                          <Copy size={13} />
-                        </button>
-                        <button
-                          className={item.pinned ? "qp-icon pinned" : "qp-icon"}
-                          title={item.pinned ? "Unpin (Ctrl+P)" : "Pin (Ctrl+P)"}
-                          aria-label={item.pinned ? "Unpin" : "Pin"}
-                          onClick={(event) => {
-                            stop(event);
-                            void togglePinned(item);
-                          }}
-                        >
-                          {item.pinned ? <Pin size={13} /> : <PinOff size={13} />}
-                        </button>
+                      <div className="qp-tail">
+                        {item.pinned && <Pin className="qp-pin-mark" size={12} aria-label="Pinned" />}
+                        <div className="qp-actions">
+                          <button
+                            className="qp-icon"
+                            title="Copy"
+                            aria-label="Copy"
+                            disabled={!smartText(item)}
+                            onClick={async (event) => {
+                              stop(event);
+                              await navigator.clipboard?.writeText(smartText(item));
+                            }}
+                          >
+                            <Copy size={14} />
+                          </button>
+                          <button
+                            className="qp-icon"
+                            title={item.pinned ? "Unpin (Ctrl+P)" : "Pin (Ctrl+P)"}
+                            aria-label={item.pinned ? "Unpin" : "Pin"}
+                            onClick={(event) => {
+                              stop(event);
+                              void togglePinned(item);
+                            }}
+                          >
+                            {item.pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -312,18 +318,20 @@ export function QuickPaste({ onClose, embedded = false }: { onClose: () => void 
         </div>
 
         <footer className="qp-footer">
-          <span>
-            <kbd>↵</kbd> Paste
-          </span>
-          <span>
-            <kbd>Ctrl+C</kbd> Copy
-          </span>
-          <span>
-            <kbd>Ctrl+P</kbd> Pin
-          </span>
-          <span>
-            <kbd>Tab</kbd> Section
-          </span>
+          <div className="qp-hints">
+            <span>
+              <kbd>↵</kbd> Paste
+            </span>
+            <span>
+              <kbd>Ctrl C</kbd> Copy
+            </span>
+            <span>
+              <kbd>Tab</kbd> Switch
+            </span>
+          </div>
+          <button className="qp-icon" onClick={() => openMainWindow()} title="Open ClipVault" aria-label="Open ClipVault">
+            <SquareArrowOutUpRight size={14} />
+          </button>
         </footer>
 
         {contextMenu && (
@@ -336,7 +344,7 @@ export function QuickPaste({ onClose, embedded = false }: { onClose: () => void 
             onContextMenu={(event) => event.preventDefault()}
           >
             <button role="menuitem" onClick={() => pasteAndClose(contextMenu.item.id)}>
-              <Clipboard size={14} />
+              <ClipboardPaste size={14} />
               Paste
             </button>
             <button
@@ -360,17 +368,15 @@ export function QuickPaste({ onClose, embedded = false }: { onClose: () => void 
               {contextMenu.item.pinned ? <PinOff size={14} /> : <Pin size={14} />}
               {contextMenu.item.pinned ? "Unpin" : "Pin"}
             </button>
-            {contextPasteActions.length > 1 && (
+            {contextPasteActions.length > 0 && (
               <>
                 <div className="menu-separator" />
                 <div className="menu-label">Paste as</div>
-                {contextPasteActions
-                  .filter((action) => action.key !== "plain")
-                  .map((action) => (
-                    <button key={action.key} role="menuitem" onClick={() => pasteTransformedAndClose(contextMenu.item, action.key)}>
-                      {action.label}
-                    </button>
-                  ))}
+                {contextPasteActions.map((action) => (
+                  <button key={action.key} role="menuitem" onClick={() => pasteTransformedAndClose(contextMenu.item, action.key)}>
+                    {action.label}
+                  </button>
+                ))}
               </>
             )}
           </div>

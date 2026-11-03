@@ -141,7 +141,8 @@ export const demoSettings: AppSettings = {
   closeToTray: true,
   minimizeToTray: true,
   startMinimized: false,
-  launchOnStartup: false
+  launchOnStartup: false,
+  autoUpdate: true
 };
 
 export function mockSearch(query: string, filters: ClipboardFilters, limit: number, offset: number): SearchResponse {

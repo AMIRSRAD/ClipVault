@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0 - 2026-11-03
+
+### Added
+- Quiet automatic updates. ClipVault checks for a signed release once a day, downloads it in the background, and shows a small dismissible "Update ready" card in the sidebar. Nothing is installed until you click Restart. Settings -> Updates and About have a "Check now" button, and the daily check can be turned off.
+- Native rounded corners, border, and shadow for the quick paste window on Windows 11.
+
+### Changed
+- Redesigned quick paste popup: search first, light section tabs, a flat list with image thumbnails, pinned items on top, actions on hover, and a single-line footer.
+- Cleaner preview pane in the main window: a Paste button with a "Paste as" menu, one muted line of metadata, quiet suggested actions, and inline tags.
+- Update signatures are verified with a public key built into the app.
+
 ## 1.0.1 — 2026-11-03
 
 Idle performance release.

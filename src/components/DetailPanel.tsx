@@ -1,4 +1,4 @@
-import { Braces, Clipboard, Code2, Copy, ExternalLink, FileText, FolderOpen, Globe, Image, Mail, NotebookPen, Pin, PinOff, ScanText, Trash2, X } from "lucide-react";
+import { Braces, ChevronDown, Clipboard, ClipboardPaste, Code2, Copy, ExternalLink, FileText, FolderOpen, Globe, Image, Mail, NotebookPen, Pin, PinOff, ScanText, Tag, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { openExternal, pasteText, runOcr, updateNote } from "../api";
@@ -105,28 +105,21 @@ export function DetailPanel({
     <section className="detail-pane" aria-label="Preview">
       <header className="detail-header">
         <div className="detail-titles">
-          <div className="detail-kind">
-            <span className={`kind-badge kind-${current.kind}`}>
-              <KindIcon size={12} strokeWidth={2.2} />
-              {kindLabel(current)}
-            </span>
-            {current.pinned && (
-              <span className="kind-badge pinned">
-                <Pin size={11} strokeWidth={2.2} />
-                Pinned
-              </span>
-            )}
-          </div>
-          <h2 title={title}>{title}</h2>
+          <h2 title={title}>
+            {current.pinned && <Pin className="title-pin" size={15} aria-label="Pinned" />}
+            {title}
+          </h2>
           <p className="detail-sub">
-            {current.kind === "note" ? "Saved note" : current.sourceApp ?? "Unknown app"} · {fullTimestamp(current.createdAt)}
+            <KindIcon size={13} strokeWidth={1.9} />
+            {kindLabel(current)}
+            <span aria-hidden>·</span>
+            {current.kind === "note" ? "Saved note" : current.sourceApp ?? "Unknown app"}
+            <span aria-hidden>·</span>
+            {fullTimestamp(current.createdAt)}
           </p>
         </div>
         <div className="command-bar">
-          <button className="button accent" onClick={() => onPaste(current)} title="Paste into the last active app (Enter)">
-            <Clipboard size={15} />
-            Paste
-          </button>
+          <PasteSplit item={current} text={current.kind === "note" ? noteText : text} onPaste={() => onPaste(current)} />
           <button className="icon-button" onClick={() => text && copyText(text, "Copied to clipboard")} disabled={!text} title="Copy text" aria-label="Copy text">
             <Copy size={16} />
           </button>
@@ -198,11 +191,11 @@ export function DetailPanel({
         )}
 
         <SmartActions item={current} text={current.kind === "note" ? noteText : text} onApply={applyText} onCopy={copyText} />
-        {current.kind !== "image" && <PasteAs text={current.kind === "note" ? noteText : text} />}
 
-        <DetailSection title="Tags">
+        <div className="tags-row">
+          <Tag size={14} aria-hidden />
           <TagEditor tags={current.tags} onChange={(tags) => onTagSave(current, tags)} />
-        </DetailSection>
+        </div>
       </div>
     </section>
   );
@@ -261,38 +254,74 @@ function SmartActions({
   if (actions.length === 0) return null;
 
   return (
-    <DetailSection title="Suggested actions">
-      <div className="action-chips">
-        {actions.map(({ key, icon: Icon, label, run, title }) => (
-          <button key={key} className="chip action" onClick={run} title={title}>
-            <Icon size={13} />
-            {label}
-          </button>
-        ))}
-      </div>
-    </DetailSection>
+    <div className="suggest-row" aria-label="Suggested actions">
+      {actions.map(({ key, icon: Icon, label, run, title }) => (
+        <button key={key} className="suggest" onClick={run} title={title}>
+          <Icon size={14} />
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }
 
-function PasteAs({ text }: { text: string }) {
-  if (!text.trim()) return null;
-  const actions = pasteTransformActions.filter((action) => action.key !== "plain" && action.enabled?.(text) !== false);
+function PasteSplit({ item, text, onPaste }: { item: ClipboardItem; text: string; onPaste: () => void }) {
+  const [open, setOpen] = useState(false);
+  const actions = item.kind === "image" || !text.trim() ? [] : pasteTransformActions.filter((action) => action.key !== "plain" && action.enabled?.(text) !== false);
 
-  async function paste(key: (typeof actions)[number]["key"]) {
+  useEffect(() => {
+    setOpen(false);
+  }, [item.id]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const closeOnEscape = (event: KeyboardEvent) => event.key === "Escape" && close();
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  async function pasteAs(key: (typeof actions)[number]["key"]) {
+    setOpen(false);
     const transformed = transformText(text, key);
     if (transformed !== null) await pasteText(transformed);
   }
 
   return (
-    <DetailSection title="Paste as">
-      <div className="action-chips">
-        {actions.map((action) => (
-          <button key={action.key} className="chip" onClick={() => paste(action.key)}>
-            {action.label}
-          </button>
-        ))}
-      </div>
-    </DetailSection>
+    <div className="split-button">
+      <button className="button accent" onClick={onPaste} title="Paste into the last active app (Enter)">
+        <ClipboardPaste size={15} />
+        Paste
+      </button>
+      {actions.length > 0 && (
+        <button
+          className="button accent split-toggle"
+          aria-label="Paste as…"
+          aria-expanded={open}
+          title="Paste as…"
+          onClick={(event) => {
+            event.stopPropagation();
+            setOpen((value) => !value);
+          }}
+        >
+          <ChevronDown size={15} />
+        </button>
+      )}
+      {open && (
+        <div className="menu" role="menu">
+          <div className="menu-label">Paste as</div>
+          {actions.map((action) => (
+            <button key={action.key} role="menuitem" onClick={() => pasteAs(action.key)}>
+              {action.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

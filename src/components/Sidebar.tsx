@@ -1,5 +1,6 @@
-import { Clipboard, FileText, Image, Info, Keyboard, NotebookPen, Pause, Pin, Play, Settings, Tags } from "lucide-react";
+import { Clipboard, FileText, Image, Info, Keyboard, NotebookPen, Pause, Pin, Play, Settings, Tags, X } from "lucide-react";
 import clipvaultIcon from "../assets/clipvault-icon.png";
+import type { UpdateInfo } from "../types";
 
 export type ViewKey = "all" | "pinned" | "text" | "images" | "notes" | "tags" | "settings" | "info";
 
@@ -36,7 +37,10 @@ export function Sidebar({
   onTogglePause,
   retentionDays,
   hotkey,
-  onQuickPaste
+  onQuickPaste,
+  update,
+  onInstallUpdate,
+  onDismissUpdate
 }: {
   view: ViewKey;
   onNavigate: (view: ViewKey) => void;
@@ -45,6 +49,9 @@ export function Sidebar({
   retentionDays: number | null;
   hotkey: string;
   onQuickPaste: () => void;
+  update: UpdateInfo | null;
+  onInstallUpdate: () => void;
+  onDismissUpdate: () => void;
 }) {
   const renderEntry = ({ key, label, icon: Icon }: NavEntry) => (
     <button key={key} className={view === key ? "nav-item active" : "nav-item"} onClick={() => onNavigate(key)} aria-current={view === key ? "page" : undefined}>
@@ -70,6 +77,21 @@ export function Sidebar({
       </nav>
 
       <div className="sidebar-footer">
+        {update && (
+          <div className="update-card" role="status">
+            <div className="update-copy">
+              <strong>Update ready</strong>
+              <span>Version {update.version}</span>
+            </div>
+            <button className="button accent small" onClick={onInstallUpdate} title="Install the update and restart ClipVault">
+              Restart
+            </button>
+            <button className="icon-button subtle" onClick={onDismissUpdate} title="Not now" aria-label="Dismiss update notice">
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         <button className="quick-paste-button" onClick={onQuickPaste} title="Open quick paste">
           <Keyboard size={16} strokeWidth={1.9} />
           <span>Quick paste</span>

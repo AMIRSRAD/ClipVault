@@ -83,6 +83,8 @@ pub struct AppSettings {
     pub start_minimized: bool,
     #[serde(default)]
     pub launch_on_startup: bool,
+    #[serde(default = "default_true")]
+    pub auto_update: bool,
 }
 
 impl Default for AppSettings {
@@ -100,6 +102,7 @@ impl Default for AppSettings {
             minimize_to_tray: true,
             start_minimized: false,
             launch_on_startup: false,
+            auto_update: true,
         }
     }
 }

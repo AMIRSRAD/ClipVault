@@ -35,7 +35,15 @@ export type AppSettings = {
   minimizeToTray: boolean;
   startMinimized: boolean;
   launchOnStartup: boolean;
+  autoUpdate: boolean;
 };
+
+export type UpdateInfo = {
+  version: string;
+  notes: string | null;
+};
+
+export type UpdateCheck = ({ status: "ready" } & UpdateInfo) | { status: "upToDate" } | { status: "error"; message: string };
 
 export type SearchResponse = {
   items: ClipboardItem[];

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppSettings, ClipboardFilters, ClipboardItem, OcrResponse, SearchResponse } from "./types";
+import type { AppSettings, ClipboardFilters, ClipboardItem, OcrResponse, SearchResponse, UpdateCheck, UpdateInfo } from "./types";
 import { demoItems, demoSettings, mockOcr, mockSearch } from "./mockData";
 
 const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -163,4 +163,25 @@ export async function openMainWindow(): Promise<void> {
 export async function startPaletteDrag(): Promise<void> {
   if (!isTauri()) return;
   await invoke("start_palette_drag");
+}
+
+// Browser preview: add ?update to the URL to see the "update ready" state.
+const demoUpdate: UpdateInfo | null =
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).has("update")
+    ? { version: "1.2.0", notes: "Faster search and a few small fixes." }
+    : null;
+
+export async function pendingUpdate(): Promise<UpdateInfo | null> {
+  if (!isTauri()) return demoUpdate;
+  return invoke<UpdateInfo | null>("pending_update");
+}
+
+export async function checkForUpdate(): Promise<UpdateCheck> {
+  if (!isTauri()) return demoUpdate ? { status: "ready", ...demoUpdate } : { status: "upToDate" };
+  return invoke<UpdateCheck>("check_for_update");
+}
+
+export async function installUpdate(): Promise<void> {
+  if (!isTauri()) return;
+  await invoke("install_update");
 }
