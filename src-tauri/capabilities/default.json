@@ -2,6 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Main ClipVault window permissions",
-  "windows": ["main", "palette"],
+  "windows": ["main"],
   "permissions": ["core:default", "global-shortcut:allow-register", "global-shortcut:allow-unregister"]
 }

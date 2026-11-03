@@ -53,23 +53,35 @@ pnpm tauri build
 - Try smart actions on URL, JSON, email, code, and file path text.
 - Export a backup from Settings.
 - Import the backup and confirm the app reports imported items.
-- Open the Info tab and confirm creator, website, and license text are correct.
-- Click the Info tab website link and confirm it opens `https://amirsrad.ir`.
+- Open the About page and confirm creator, website, and license text are correct.
+- Click the website link and confirm it opens `https://amirsrad.ir`.
+- Pause and resume capture from the sidebar and confirm the banner appears and clears.
+- Enable launch on startup, sign out and back in, and confirm ClipVault starts hidden in the tray.
 
 ## Release Outputs
 
 Tauri writes Windows release outputs to:
 
 - `src-tauri/target/release/clipvault.exe`
-- `src-tauri/target/release/bundle/nsis/ClipVault_0.1.0_x64-setup.exe`
-- `src-tauri/target/release/bundle/msi/ClipVault_0.1.0_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/ClipVault_<version>_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/ClipVault_<version>_x64_en-US.msi`
 
 These files are build artifacts and should not be committed.
 
+## Cutting a Release
+
+1. Bump the version in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`, then build so `Cargo.lock` updates.
+2. Run the build checks and smoke test above.
+3. Commit, then tag and push: `git tag -a v<version> -m "ClipVault <version>"` and `git push origin main v<version>`.
+4. Publish the GitHub release with the NSIS setup and MSI attached: `gh release create v<version> --title "ClipVault <version>" --notes-file <notes.md> <setup.exe> <msi>`.
+
 ## Windows Installer Notes
 
-- The NSIS setup executable installs for the current user and creates a Start Menu shortcut.
-- Startup launch is opt-in from Settings and uses the current user's `Run` registry key.
-- The NSIS uninstall hook removes ClipVault's `Run` value when uninstalling.
+- The NSIS setup installs for the current user (no admin prompt) under `%LOCALAPPDATA%\ClipVault`, shows the license, and bundles the WebView2 bootstrapper.
+- It creates a Start Menu shortcut; the finish page offers a desktop shortcut and launching the app. Silent (`/S`) installs create both shortcuts.
+- A first-time interactive install asks whether to launch at sign-in. Choosing yes writes the per-user `Run` value `"<install dir>\clipvault.exe" --minimized`. Upgrades keep an existing choice and re-point it at the new install.
+- The app treats that `Run` value as the source of truth for **Settings → Launch on Windows startup** and refreshes its path on every launch.
+- The uninstaller removes the shortcuts, the `Run` value, and the Apps & features entry. Ticking "Delete the application data" also removes `%LOCALAPPDATA%\ClipVault\ClipVault` (encrypted database and key).
+- Installer artwork is in `src-tauri/windows/` (`installer-header.bmp`, `installer-sidebar.bmp`); hooks are in `nsis-hooks.nsh`.
 - Test install, upgrade, startup enable/disable, and uninstall on a clean Windows account before publishing a release.
 - The installer is unsigned unless a code-signing certificate is configured; Windows SmartScreen may display a reputation warning.

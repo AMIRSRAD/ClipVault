@@ -1,5 +1,7 @@
 # ClipVault
 
+[![Latest release](https://img.shields.io/github/v/release/AMIRSRAD/ClipVault)](https://github.com/AMIRSRAD/ClipVault/releases/latest) ![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
+
 ClipVault is a modern lightweight Windows clipboard manager with encrypted local history, saved note snippets, OCR, smart preview actions, and a fast Windows-style quick-paste popup.
 
 It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, lets you save reusable notes/snippets, and keeps all content local.
@@ -8,16 +10,22 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
 
 ![ClipVault main window with example clipboard items](docs/assets/main-window.png)
 
-![ClipVault quick paste popup with example items](docs/assets/quick-paste-popup.png)
+<p align="center">
+  <img src="docs/assets/quick-paste-popup.png" alt="ClipVault quick paste popup with example items" width="370">
+</p>
+
+Screenshots use sample data. The interface follows your Windows light/dark setting.
 
 ## Features
 
 - Text and image clipboard history.
 - Searchable timeline with source metadata, tags, pins, and SQLite FTS indexing.
-- Windows-style quick paste popup with compact dark UI, bottom-center placement, keyboard navigation, fuzzy search, right-click paste options, and grouped clipboard/notes results.
+- Windows 11 (Fluent) style interface that follows the system light/dark theme.
+- Quick paste popup with bottom-center placement, fuzzy search, section tabs, image previews, right-click paste options, and grouped notes/clipboard results.
+- Keyboard-first: `↑`/`↓` to move, `Enter` to paste, `Ctrl+C` to copy, `Ctrl+P` to pin, `Tab` or `Alt+1-5` to switch sections in quick paste; `Ctrl+F` to search, `P` to pin, `Delete` to remove, and `Ctrl+N` for a new note in the main window.
 - Default global shortcut: `Ctrl+Shift+V`.
 - System tray menu for opening ClipVault, opening quick paste, pausing/resuming capture, opening Settings, and quitting.
-- Window behavior settings for close-to-tray, minimize-to-tray, start minimized, and launch on Windows startup.
+- Window behavior settings for close-to-tray, minimize-to-tray, start minimized, and launch on Windows startup (starts hidden in the tray).
 - Polished Windows window behavior with no console window, tray-first close/minimize support, and stable reopen behavior.
 - Dedicated Info tab for creator, website, and license ownership details.
 - Notes as saved snippets, stored in the same encrypted item system as clipboard entries.
@@ -32,7 +40,7 @@ It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, 
   - extract emails
   - open Windows file path
 - Paste transformations for text: plain, trim, no line breaks, upper/lower/title case, JSON prettify, and JSON minify.
-- Privacy controls for capture pause, excluded apps/window titles, sensitive-value suppression, and retention.
+- Privacy controls for capture pause/resume (sidebar or tray), excluded apps/window titles, sensitive-value suppression, and retention.
 - Clipboard restore after quick paste for text and images when the prior clipboard content can be read.
 - Encrypted import/export for settings, notes, and pinned clips.
 - Custom app icon for the title bar, taskbar, tray, installer, and in-app branding.
@@ -64,16 +72,38 @@ The repository includes a root `LICENSE` file with the same all-rights-reserved 
 - Rust and Cargo through rustup.
 - Microsoft C++ Build Tools.
 - Microsoft Edge WebView2 runtime.
-- Strawberry Perl, used by the vendored OpenSSL build for SQLCipher.
+- Strawberry Perl, used by the vendored OpenSSL build for SQLCipher. Put `C:\Strawberry\perl\bin` before Git's Perl in `PATH`; Git's Cygwin Perl fails to build OpenSSL.
 
 ## Install
+
+Download `ClipVault_1.0.0_x64-setup.exe` from the [latest release](https://github.com/AMIRSRAD/ClipVault/releases/latest) and run it. No administrator rights are needed; it installs for the current Windows user.
+
+The installer:
+
+- Shows the license, lets you pick the install folder (default `%LOCALAPPDATA%\ClipVault`), and installs the WebView2 runtime if your PC doesn't have it.
+- Creates a Start Menu shortcut. On the last page you can tick **Create a desktop shortcut** and **Run ClipVault**.
+- Asks whether to start ClipVault when you sign in to Windows. If you say yes, it starts quietly in the system tray.
+- Registers ClipVault in **Settings → Apps → Installed apps** so Windows can uninstall it. The uninstaller can also delete your saved history and key.
+
+Upgrading is just running a newer installer; your history, notes, and settings are kept.
+
+You can change startup behavior any time in **Settings → Window → Launch on Windows startup**. The installer is unsigned, so Windows SmartScreen may show a reputation warning; choose **More info → Run anyway**. An MSI is also published for managed deployments.
+
+### Silent install
+
+```powershell
+.\ClipVault_1.0.0_x64-setup.exe /S
+.\ClipVault_1.0.0_x64-setup.exe /S /D=D:\Apps\ClipVault   # custom folder; /D must be last
+```
+
+Silent installs create the Start Menu and desktop shortcuts and do not enable startup.
+
+### Build from source
 
 ```powershell
 corepack enable
 pnpm install --frozen-lockfile
 ```
-
-For end users, download and run the `*-setup.exe` installer from the [GitHub Releases](https://github.com/AMIRSRAD/ClipVault/releases) page. The NSIS installer installs for the current Windows user and creates a Start Menu shortcut. ClipVault does not enable startup launch during installation. To enable it later, open **Settings → Launch on Windows startup**; this adds a per-user Run entry. Turning the option off or uninstalling ClipVault removes that entry. Windows may show its normal publisher reputation prompt for an unsigned installer.
 
 ## Development
 
@@ -99,8 +129,8 @@ pnpm tauri build
 Release outputs are generated under:
 
 - `src-tauri/target/release/clipvault.exe`
-- `src-tauri/target/release/bundle/nsis/ClipVault_0.1.0_x64-setup.exe`
-- `src-tauri/target/release/bundle/msi/ClipVault_0.1.0_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/ClipVault_1.0.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/ClipVault_1.0.0_x64_en-US.msi`
 
 The app icon is generated from:
 

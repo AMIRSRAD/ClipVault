@@ -4,6 +4,13 @@ import { demoItems, demoSettings, mockOcr, mockSearch } from "./mockData";
 
 const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+function updateDemoItem(id: string, patch: Partial<ClipboardItem>): ClipboardItem | null {
+  const index = demoItems.findIndex((item) => item.id === id);
+  if (index < 0) return null;
+  demoItems[index] = { ...demoItems[index], ...patch };
+  return demoItems[index];
+}
+
 type SearchPayload = {
   query: string;
   filters: ClipboardFilters;
@@ -35,23 +42,33 @@ export async function pasteText(text: string): Promise<void> {
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  if (!isTauri()) return;
+  if (!isTauri()) {
+    const index = demoItems.findIndex((item) => item.id === id);
+    if (index >= 0) demoItems.splice(index, 1);
+    return;
+  }
   await invoke("delete_item", { id });
 }
 
 export async function pinItem(id: string, pinned: boolean): Promise<void> {
-  if (!isTauri()) return;
+  if (!isTauri()) {
+    updateDemoItem(id, { pinned });
+    return;
+  }
   await invoke("pin_item", { id, pinned });
 }
 
 export async function setTags(id: string, tags: string[]): Promise<void> {
-  if (!isTauri()) return;
+  if (!isTauri()) {
+    updateDemoItem(id, { tags });
+    return;
+  }
   await invoke("set_tags", { id, tags });
 }
 
 export async function createNote(text: string, tags: string[]): Promise<ClipboardItem> {
   if (!isTauri()) {
-    return {
+    const note: ClipboardItem = {
       id: `demo-note-${Date.now()}`,
       kind: "note",
       text,
@@ -66,15 +83,14 @@ export async function createNote(text: string, tags: string[]): Promise<Clipboar
       sizeBytes: text.length,
       expiresAt: null
     };
+    demoItems.unshift(note);
+    return note;
   }
   return invoke<ClipboardItem>("create_note", { text, tags });
 }
 
 export async function updateNote(id: string, text: string): Promise<ClipboardItem> {
-  if (!isTauri()) {
-    const existing = demoItems.find((item) => item.id === id);
-    return { ...(existing ?? demoItems[0]), kind: "note", text, sizeBytes: text.length };
-  }
+  if (!isTauri()) return updateDemoItem(id, { text, sizeBytes: text.length }) ?? demoItems[0];
   return invoke<ClipboardItem>("update_note", { id, text });
 }
 
@@ -93,9 +109,27 @@ export async function updateSettings(settings: AppSettings): Promise<AppSettings
   return invoke<AppSettings>("update_settings", { settings });
 }
 
+let demoPaused = false;
+
 export async function pauseCapture(durationSeconds: number | null): Promise<void> {
-  if (!isTauri()) return;
+  if (!isTauri()) {
+    demoPaused = true;
+    return;
+  }
   await invoke("pause_capture", { durationSeconds });
+}
+
+export async function resumeCapture(): Promise<void> {
+  if (!isTauri()) {
+    demoPaused = false;
+    return;
+  }
+  await invoke("resume_capture");
+}
+
+export async function capturePaused(): Promise<boolean> {
+  if (!isTauri()) return demoPaused;
+  return invoke<boolean>("capture_paused");
 }
 
 export async function exportBackup(): Promise<string> {

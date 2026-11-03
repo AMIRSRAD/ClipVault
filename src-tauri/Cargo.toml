@@ -1,6 +1,6 @@
 [package]
 name = "clipvault"
-version = "0.1.0"
+version = "1.0.0"
 description = "A modern lightweight clipboard history manager for Windows."
 authors = ["Amirsalar Saberi rad"]
 license = "UNLICENSED"
@@ -15,6 +15,7 @@ arboard = { version = "3", features = ["image-data"] }
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 directories = "5"
+getrandom = "0.2"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 rusqlite = { version = "0.32", features = ["bundled-sqlcipher-vendored-openssl", "chrono"] }
 serde = { version = "1", features = ["derive"] }

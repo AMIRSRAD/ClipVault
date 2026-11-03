@@ -66,6 +66,10 @@ impl ClipboardWatcher {
             }
             last_sequence = sequence;
 
+            if clipboard_marked_excluded() {
+                continue;
+            }
+
             if clipboard.is_none() {
                 clipboard = Clipboard::new().ok();
             }
@@ -225,6 +229,19 @@ impl ClipboardContent {
             }
             Self::Empty => {}
         }
+    }
+}
+
+/// Password managers set this format to ask clipboard managers not to record the content.
+fn clipboard_marked_excluded() -> bool {
+    use windows::core::w;
+    use windows::Win32::System::DataExchange::{
+        IsClipboardFormatAvailable, RegisterClipboardFormatW,
+    };
+
+    unsafe {
+        let format = RegisterClipboardFormatW(w!("ExcludeClipboardContentFromMonitorProcessing"));
+        format != 0 && IsClipboardFormatAvailable(format).is_ok()
     }
 }
 

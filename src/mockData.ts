@@ -74,8 +74,60 @@ export const demoItems: ClipboardItem[] = [
     tags: ["notes", "design"],
     sizeBytes: 62,
     expiresAt: null
-  }
+  },
+  demoText("demo-5", "https://github.com/tauri-apps/tauri/releases/tag/tauri-v2.1.0", "Microsoft Edge", "Release notes · tauri-apps/tauri", 160, ["links"]),
+  demoText(
+    "demo-6",
+    '{"id":42,"name":"ClipVault","features":["history","notes","ocr"],"encrypted":true}',
+    "Visual Studio Code",
+    "settings.json — ClipVault",
+    300
+  ),
+  demoText("demo-7", "Hi Sara,\n\nThanks for the quick review. I pushed the fixes — can you take another look when you get a chance?\n\nBest,\nAmir", "Outlook", "RE: Popup spacing", 60 * 20, ["emails"]),
+  demoText("demo-8", "D:\\Projects\\ClipVault\\src-tauri\\target\\release\\bundle\\nsis", "File Explorer", "nsis", 60 * 26),
+  demoText(
+    "demo-9",
+    "export function relativeTime(iso: string): string {\n  const seconds = Math.round((Date.now() - new Date(iso).getTime()) / 1000);\n  if (seconds < 60) return \"just now\";\n  return `${Math.round(seconds / 60)}m ago`;\n}",
+    "Visual Studio Code",
+    "format.ts — ClipVault",
+    60 * 30,
+    ["code"]
+  ),
+  {
+    id: "demo-10",
+    kind: "note",
+    text: "Prompt\n\nContext: Windows clipboard manager written in Tauri.\n\nTask: Suggest keyboard shortcuts for power users.",
+    ocrText: null,
+    imageUrl: null,
+    sourceApp: "ClipVault",
+    sourceTitle: "Note",
+    createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 50).toISOString(),
+    lastUsedAt: null,
+    pinned: false,
+    tags: ["prompts"],
+    sizeBytes: 118,
+    expiresAt: null
+  },
+  demoText("demo-11", "Meeting moved to Thursday 14:00 — room 3B", "Microsoft Teams", "Design sync", 60 * 24 * 4)
 ];
+
+function demoText(id: string, text: string, sourceApp: string, sourceTitle: string, minutesAgo: number, tags: string[] = []): ClipboardItem {
+  return {
+    id,
+    kind: "text",
+    text,
+    ocrText: null,
+    imageUrl: null,
+    sourceApp,
+    sourceTitle,
+    createdAt: new Date(now.getTime() - 1000 * 60 * minutesAgo).toISOString(),
+    lastUsedAt: null,
+    pinned: false,
+    tags,
+    sizeBytes: text.length,
+    expiresAt: new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30).toISOString()
+  };
+}
 
 export const demoSettings: AppSettings = {
   retentionDays: 30,

@@ -51,6 +51,38 @@ pub fn source_is_excluded(
             .any(|pattern| title_value.contains(&pattern.to_lowercase()))
 }
 
+const SECRET_KEY_NAMES: &[&str] = &[
+    "password",
+    "passwd",
+    "pwd",
+    "api_key",
+    "apikey",
+    "api-key",
+    "secret",
+    "token",
+    "access_key",
+    "private_key",
+    "client_secret",
+    "authorization",
+];
+
+const TOKEN_PREFIXES: &[&str] = &[
+    "ghp_",
+    "gho_",
+    "ghu_",
+    "ghs_",
+    "github_pat_",
+    "sk-",
+    "sk_live_",
+    "pk_live_",
+    "xoxb-",
+    "xoxp-",
+    "akia",
+    "asia",
+    "aiza",
+    "glpat-",
+];
+
 pub fn looks_sensitive(text: &str) -> bool {
     let trimmed = text.trim();
     let lower = trimmed.to_lowercase();
@@ -59,11 +91,25 @@ pub fn looks_sensitive(text: &str) -> bool {
         return true;
     }
 
-    if lower.contains("password=")
-        || lower.contains("passwd=")
-        || lower.contains("api_key=")
-        || lower.contains("secret=")
-    {
+    if has_secret_assignment(&lower) || lower.starts_with("bearer ") {
+        return true;
+    }
+
+    // Single-token values only: prefixed API tokens, JWTs, card numbers, long random strings.
+    if trimmed.split_whitespace().count() == 1 {
+        if TOKEN_PREFIXES
+            .iter()
+            .any(|prefix| lower.starts_with(prefix))
+            && trimmed.len() >= 16
+        {
+            return true;
+        }
+        if is_jwt(trimmed) {
+            return true;
+        }
+    }
+
+    if is_card_number(trimmed) {
         return true;
     }
 
@@ -72,6 +118,64 @@ pub fn looks_sensitive(text: &str) -> bool {
         && compact
             .chars()
             .all(|ch| ch.is_ascii_alphanumeric() || ch == '.' || ch == '/')
+}
+
+/// Detects `password=x`, `password: x` and `"password": "x"` style assignments.
+fn has_secret_assignment(lower: &str) -> bool {
+    SECRET_KEY_NAMES.iter().any(|name| {
+        lower.match_indices(name).any(|(index, _)| {
+            let rest = lower[index + name.len()..].trim_start_matches(['"', '\'']);
+            let rest = rest.trim_start();
+            let Some(value) = rest.strip_prefix(['=', ':']) else {
+                return false;
+            };
+            !value.trim_start_matches([' ', '"', '\'']).is_empty()
+        })
+    })
+}
+
+fn is_jwt(value: &str) -> bool {
+    let parts: Vec<&str> = value.split('.').collect();
+    parts.len() == 3
+        && value.starts_with("eyJ")
+        && parts.iter().all(|part| {
+            !part.is_empty()
+                && part
+                    .chars()
+                    .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' || ch == '=')
+        })
+}
+
+/// 13-19 digits (spaces/dashes allowed) that pass the Luhn check.
+fn is_card_number(value: &str) -> bool {
+    if !value
+        .chars()
+        .all(|ch| ch.is_ascii_digit() || ch == ' ' || ch == '-')
+    {
+        return false;
+    }
+    let digits: Vec<u32> = value.chars().filter_map(|ch| ch.to_digit(10)).collect();
+    if !(13..=19).contains(&digits.len()) {
+        return false;
+    }
+    let sum: u32 = digits
+        .iter()
+        .rev()
+        .enumerate()
+        .map(|(index, digit)| {
+            if index % 2 == 1 {
+                let doubled = digit * 2;
+                if doubled > 9 {
+                    doubled - 9
+                } else {
+                    doubled
+                }
+            } else {
+                *digit
+            }
+        })
+        .sum();
+    sum.is_multiple_of(10)
 }
 
 #[cfg(test)]
@@ -95,5 +199,33 @@ mod tests {
         assert!(looks_sensitive(
             "exampletokenabcdefghijklmnopqrstuvwxyz1234567890"
         ));
+    }
+
+    #[test]
+    fn suppresses_assignments() {
+        assert!(looks_sensitive("password=hunter2"));
+        assert!(looks_sensitive("{\"password\": \"hunter2\"}"));
+        assert!(looks_sensitive("API_TOKEN: abc123"));
+        assert!(looks_sensitive("Bearer abc.def"));
+    }
+
+    #[test]
+    fn suppresses_prefixed_tokens_jwts_and_cards() {
+        assert!(looks_sensitive("ghp_abcdefghijklmnop1234"));
+        assert!(looks_sensitive("AKIAIOSFODNN7EXAMPLE"));
+        assert!(looks_sensitive(
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl"
+        ));
+        assert!(looks_sensitive("4111 1111 1111 1111"));
+    }
+
+    #[test]
+    fn keeps_ordinary_text() {
+        assert!(!looks_sensitive(
+            "Meeting notes: reset the password policy doc"
+        ));
+        assert!(!looks_sensitive("password"));
+        assert!(!looks_sensitive("1234 5678 9012 3456"));
+        assert!(!looks_sensitive("https://example.com/path"));
     }
 }

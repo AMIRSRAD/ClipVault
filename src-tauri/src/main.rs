@@ -77,6 +77,8 @@ pub fn run() {
             commands::get_settings,
             commands::update_settings,
             commands::pause_capture,
+            commands::resume_capture,
+            commands::capture_paused,
             commands::export_backup,
             commands::import_backup,
             commands::open_external,
@@ -105,7 +107,10 @@ pub fn run() {
                 .map_err(|error| tauri::Error::Anyhow(anyhow::anyhow!(error)))?;
             app.global_shortcut().register(shortcut)?;
 
-            if settings.start_minimized {
+            commands::refresh_startup_entry();
+
+            let launched_minimized = std::env::args().any(|arg| arg == commands::MINIMIZED_FLAG);
+            if settings.start_minimized || launched_minimized {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.hide();
                 }

@@ -141,7 +141,13 @@ pub fn run_ocr(state: State<'_, AppState>, id: String) -> Result<OcrResponse, St
 
 #[tauri::command]
 pub fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, String> {
-    state.storage.settings().map_err(|error| error.to_string())
+    let mut settings = state
+        .storage
+        .settings()
+        .map_err(|error| error.to_string())?;
+    // The installer can enable startup too, so the Run key is the source of truth.
+    settings.launch_on_startup = launch_on_startup_enabled();
+    Ok(settings)
 }
 
 #[tauri::command]
@@ -185,6 +191,25 @@ pub fn pause_capture(
         .map(|seconds| Utc::now() + Duration::seconds(seconds.max(1)))
         .or(Some(Utc::now() + Duration::days(3650)));
     Ok(())
+}
+
+#[tauri::command]
+pub fn resume_capture(state: State<'_, AppState>) -> Result<(), String> {
+    let mut pause_until = state
+        .pause_until
+        .lock()
+        .map_err(|_| "pause lock poisoned".to_string())?;
+    *pause_until = None;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn capture_paused(state: State<'_, AppState>) -> Result<bool, String> {
+    let pause_until = state
+        .pause_until
+        .lock()
+        .map_err(|_| "pause lock poisoned".to_string())?;
+    Ok(pause_until.is_some_and(|until| until > Utc::now()))
 }
 
 #[tauri::command]
@@ -289,16 +314,40 @@ fn mark_palette_dragging(state: &State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
+const RUN_KEY: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+const RUN_VALUE: &str = "ClipVault";
+
+/// Command-line flag used by the startup entry so ClipVault starts quietly in the tray.
+pub const MINIMIZED_FLAG: &str = "--minimized";
+
 fn set_launch_on_startup(enabled: bool) -> anyhow::Result<()> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let (run_key, _) = hkcu.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Run")?;
+    let (run_key, _) = hkcu.create_subkey(RUN_KEY)?;
 
     if enabled {
         let exe = std::env::current_exe()?;
-        run_key.set_value("ClipVault", &format!("\"{}\"", exe.display()))?;
+        run_key.set_value(
+            RUN_VALUE,
+            &format!("\"{}\" {MINIMIZED_FLAG}", exe.display()),
+        )?;
     } else {
-        let _ = run_key.delete_value("ClipVault");
+        let _ = run_key.delete_value(RUN_VALUE);
     }
 
     Ok(())
+}
+
+fn launch_on_startup_enabled() -> bool {
+    RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey(RUN_KEY)
+        .and_then(|key| key.get_value::<String, _>(RUN_VALUE))
+        .is_ok()
+}
+
+/// Re-points an existing startup entry at this executable, e.g. after an upgrade or move.
+pub fn refresh_startup_entry() {
+    if cfg!(debug_assertions) || !launch_on_startup_enabled() {
+        return;
+    }
+    let _ = set_launch_on_startup(true);
 }

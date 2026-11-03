@@ -1,7 +1,6 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use sha2::{Digest, Sha256};
 
 pub fn load_or_create_database_key(path: &Path) -> Result<Vec<u8>> {
     if path.exists() {
@@ -10,13 +9,9 @@ pub fn load_or_create_database_key(path: &Path) -> Result<Vec<u8>> {
         return unprotect(&protected);
     }
 
-    let seed = format!(
-        "{}:{}:{}",
-        uuid::Uuid::new_v4(),
-        whoami_fallback(),
-        chrono::Utc::now()
-    );
-    let key = Sha256::digest(seed.as_bytes()).to_vec();
+    let mut key = vec![0u8; 32];
+    getrandom::getrandom(&mut key)
+        .map_err(|err| anyhow::anyhow!("failed to generate key: {err}"))?;
     let protected = protect(&key)?;
     fs::write(path, protected)
         .with_context(|| format!("failed to write key file {}", path.display()))?;
@@ -84,17 +79,11 @@ pub fn unprotect(bytes: &[u8]) -> Result<Vec<u8>> {
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn protect(bytes: &[u8]) -> Result<Vec<u8>> {
-    Ok(bytes.to_vec())
+pub fn protect(_bytes: &[u8]) -> Result<Vec<u8>> {
+    anyhow::bail!("ClipVault key protection requires Windows DPAPI")
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn unprotect(bytes: &[u8]) -> Result<Vec<u8>> {
-    Ok(bytes.to_vec())
-}
-
-fn whoami_fallback() -> String {
-    std::env::var("USERNAME")
-        .or_else(|_| std::env::var("USER"))
-        .unwrap_or_else(|_| "clipvault".to_string())
+pub fn unprotect(_bytes: &[u8]) -> Result<Vec<u8>> {
+    anyhow::bail!("ClipVault key protection requires Windows DPAPI")
 }

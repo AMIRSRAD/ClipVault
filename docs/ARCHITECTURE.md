@@ -6,19 +6,25 @@ ClipVault is a Windows-first Tauri desktop app. Rust owns OS integration and per
 
 ## Frontend
 
-- `src/App.tsx` contains the main shell, settings view, Info view, detail panel, notes workflow, and quick paste popup.
+- `src/App.tsx` picks the window mode (main or quick paste) and owns the main shell state: current view, search, selection, capture pause, and toasts.
+- `src/components/Sidebar.tsx` is the navigation pane with the quick paste shortcut and capture status/pause toggle.
+- `src/components/ClipList.tsx` is the searchable, day-grouped list pane with keyboard navigation, filter chips, and the new-note split button.
+- `src/components/DetailPanel.tsx` is the preview pane: command bar, preview/note editor, OCR, suggested actions, paste-as transforms, and tag editor.
+- `src/components/SettingsPanel.tsx` contains the Settings and About pages.
+- `src/components/QuickPaste.tsx` is the quick paste popup, used both as its own window and as an overlay in the main window.
+- `src/lib/clip.ts` holds pure helpers: formatting, content detection, paste transforms, fuzzy ranking, and day grouping.
 - `src/api.ts` wraps Tauri commands and browser-demo fallbacks.
 - `src/types.ts` defines shared frontend models.
-- `src/styles.css` contains the dark Windows-inspired UI system for both the main app and popup.
+- `src/styles.css` contains the Fluent-inspired design tokens (light and dark, following the system theme) and styles for the main app and popup.
 - `src/mockData.ts` supports opening the React frontend without Tauri.
 
 Main views:
 
-- Clipboard categories: All, Pinned, Text, Images.
-- Saved content: Notes.
-- Utility: Tags, Settings, Info.
+- History: All clips, Pinned, Text, Images.
+- Library: Notes, Tags.
+- Footer: Settings, About.
 
-The Info view displays creator, website, and license ownership details:
+The About view displays creator, website, and license ownership details:
 
 - Creator: Amirsalar Saberi rad.
 - Website: `https://amirsrad.ir`.
