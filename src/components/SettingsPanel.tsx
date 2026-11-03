@@ -1,4 +1,4 @@
-import { Download, ExternalLink, Upload } from "lucide-react";
+import { Download, ExternalLink, Trash2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { version } from "../../package.json";
@@ -11,13 +11,15 @@ export function SettingsPanel({
   onChange,
   onToast,
   update,
-  onUpdateFound
+  onUpdateFound,
+  onClearHistory
 }: {
   settings: AppSettings;
   onChange: (settings: AppSettings) => void;
   onToast: (message: string) => void;
   update: UpdateInfo | null;
   onUpdateFound: (update: UpdateInfo) => void;
+  onClearHistory: () => void;
 }) {
   async function patch(next: Partial<AppSettings>) {
     try {
@@ -105,7 +107,7 @@ export function SettingsPanel({
           <UpdateRow update={update} onUpdateFound={onUpdateFound} onToast={onToast} />
         </SettingsGroup>
 
-        <SettingsGroup title="Backup">
+        <SettingsGroup title="Backup & data">
           <SettingRow label="Encrypted backup" description="Notes, pinned clips, and settings. Can only be restored by this Windows account.">
             <div className="row-actions">
               <button className="button" onClick={handleExport}>
@@ -125,6 +127,12 @@ export function SettingsPanel({
                 />
               </label>
             </div>
+          </SettingRow>
+          <SettingRow label="Clear clipboard history" description="Permanently removes saved clips from this PC. You choose whether to keep pinned clips and notes.">
+            <button className="button danger-outline" onClick={onClearHistory}>
+              <Trash2 size={15} />
+              Clear history…
+            </button>
           </SettingRow>
         </SettingsGroup>
       </div>

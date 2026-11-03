@@ -185,3 +185,34 @@ export async function installUpdate(): Promise<void> {
   if (!isTauri()) return;
   await invoke("install_update");
 }
+
+export async function deleteItems(ids: string[]): Promise<number> {
+  if (!isTauri()) {
+    let removed = 0;
+    for (const id of ids) {
+      const index = demoItems.findIndex((item) => item.id === id);
+      if (index >= 0) {
+        demoItems.splice(index, 1);
+        removed += 1;
+      }
+    }
+    return removed;
+  }
+  return invoke<number>("delete_items", { ids });
+}
+
+export async function pinItems(ids: string[], pinned: boolean): Promise<void> {
+  if (!isTauri()) {
+    ids.forEach((id) => updateDemoItem(id, { pinned }));
+    return;
+  }
+  await invoke("pin_items", { ids, pinned });
+}
+
+export async function clearHistory(keepPinned: boolean, keepNotes: boolean): Promise<number> {
+  if (!isTauri()) {
+    const doomed = demoItems.filter((item) => !(keepPinned && item.pinned) && !(keepNotes && item.kind === "note")).map((item) => item.id);
+    return deleteItems(doomed);
+  }
+  return invoke<number>("clear_history", { keepPinned, keepNotes });
+}

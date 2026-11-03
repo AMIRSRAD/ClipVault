@@ -360,6 +360,68 @@ impl Storage {
         Ok(())
     }
 
+    /// Deletes several items at once; returns how many were removed.
+    pub fn delete_many(&self, ids: &[String]) -> Result<usize> {
+        let conn = self.conn()?;
+        let tx = conn.unchecked_transaction()?;
+        let mut removed = 0;
+        for id in ids {
+            tx.execute("DELETE FROM item_tags WHERE item_id = ?1", [id])?;
+            tx.execute("DELETE FROM items_fts WHERE id = ?1", [id])?;
+            removed += tx.execute("DELETE FROM clipboard_items WHERE id = ?1", [id])?;
+        }
+        tx.commit()?;
+        Ok(removed)
+    }
+
+    pub fn pin_many(&self, ids: &[String], pinned: bool) -> Result<()> {
+        let conn = self.conn()?;
+        let tx = conn.unchecked_transaction()?;
+        for id in ids {
+            tx.execute(
+                "UPDATE clipboard_items SET pinned = ?1 WHERE id = ?2",
+                params![pinned, id],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Erases clipboard history. Pinned clips and notes can be kept; everything else is removed
+    /// from the tables, the search index, and (after compaction) the database file itself.
+    pub fn clear_history(&self, keep_pinned: bool, keep_notes: bool) -> Result<usize> {
+        let conn = self.conn()?;
+        let mut doomed = String::from("SELECT id FROM clipboard_items WHERE 1 = 1");
+        if keep_pinned {
+            doomed.push_str(" AND pinned = 0");
+        }
+        if keep_notes {
+            doomed.push_str(" AND kind != 'note'");
+        }
+
+        let tx = conn.unchecked_transaction()?;
+        tx.execute(
+            &format!("DELETE FROM item_tags WHERE item_id IN ({doomed})"),
+            [],
+        )?;
+        tx.execute(&format!("DELETE FROM items_fts WHERE id IN ({doomed})"), [])?;
+        let removed = tx.execute(
+            &format!("DELETE FROM clipboard_items WHERE id IN ({doomed})"),
+            [],
+        )?;
+        tx.execute(
+            "DELETE FROM tags WHERE name NOT IN (SELECT tag_name FROM item_tags)",
+            [],
+        )?;
+        tx.commit()?;
+
+        if removed > 0 {
+            // Reclaim the freed pages so deleted clips don't linger inside the file.
+            conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); VACUUM;")?;
+        }
+        Ok(removed)
+    }
+
     pub fn pin(&self, id: &str, pinned: bool) -> Result<()> {
         let conn = self.conn()?;
         conn.execute(
@@ -763,6 +825,73 @@ fn decode_optional_blob(value: &Option<String>) -> Result<Option<Vec<u8>>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn new_text(text: &str) -> NewClipboardItem {
+        NewClipboardItem {
+            kind: ClipboardKind::Text,
+            text: Some(text.to_string()),
+            image_png: None,
+            thumbnail_png: None,
+            source_app: None,
+            source_title: None,
+            hash: crate::privacy::hash_bytes("text", text.as_bytes()),
+            size_bytes: text.len() as i64,
+        }
+    }
+
+    fn total_items(storage: &Storage) -> i64 {
+        storage
+            .search(
+                String::new(),
+                ClipboardFilters {
+                    kind: None,
+                    pinned: None,
+                    tag: None,
+                },
+                100,
+                0,
+            )
+            .expect("search")
+            .total
+    }
+
+    #[test]
+    fn deletes_and_pins_many_items() {
+        let storage = Storage::in_memory().expect("storage");
+        let ids: Vec<String> = ["alpha", "beta", "gamma"]
+            .iter()
+            .map(|text| storage.insert_item(new_text(text)).unwrap().unwrap())
+            .collect();
+
+        storage.pin_many(&ids[..2], true).expect("pin many");
+        assert!(storage.get(&ids[0]).unwrap().unwrap().pinned);
+        assert!(!storage.get(&ids[2]).unwrap().unwrap().pinned);
+
+        let removed = storage.delete_many(&ids[1..]).expect("delete many");
+        assert_eq!(removed, 2);
+        assert_eq!(total_items(&storage), 1);
+        assert!(storage.get(&ids[0]).unwrap().is_some());
+    }
+
+    #[test]
+    fn clear_history_can_keep_pinned_clips_and_notes() {
+        let storage = Storage::in_memory().expect("storage");
+        let pinned = storage.insert_item(new_text("keep me")).unwrap().unwrap();
+        storage.pin(&pinned, true).unwrap();
+        storage.insert_item(new_text("drop one")).unwrap();
+        storage.insert_item(new_text("drop two")).unwrap();
+        storage
+            .create_note("a note".to_string(), vec!["ideas".to_string()])
+            .unwrap();
+
+        let removed = storage.clear_history(true, true).expect("clear");
+        assert_eq!(removed, 2);
+        assert_eq!(total_items(&storage), 2);
+
+        let removed = storage.clear_history(false, false).expect("clear all");
+        assert_eq!(removed, 2);
+        assert_eq!(total_items(&storage), 0);
+    }
 
     #[test]
     fn creates_edits_and_searches_notes() {

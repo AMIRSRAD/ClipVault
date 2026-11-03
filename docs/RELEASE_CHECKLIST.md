@@ -58,6 +58,8 @@ pnpm tauri build
 - Pause and resume capture from the sidebar and confirm the banner appears and clears.
 - Open the quick paste popup in light and dark mode; confirm rounded corners, search focus, tab switching with `Tab`, hover actions, and pinning with `Ctrl+P`.
 - Open Settings -> Updates and use **Check now**.
+- Select several items (checklist button, Shift-click range, `Ctrl+A`), then pin, copy, and delete them; confirm the delete dialog appears and Esc cancels it.
+- Use **...** -> **Clear history** with both keep options ticked and confirm pinned clips and notes remain; repeat with both unticked.
 - Enable launch on startup, sign out and back in, and confirm ClipVault starts hidden in the tray.
 
 ## Idle Performance Check

@@ -22,7 +22,9 @@ Screenshots use sample data. The interface follows your Windows light/dark setti
 - Searchable timeline with source metadata, tags, pins, and SQLite FTS indexing.
 - Windows 11 (Fluent) style interface that follows the system light/dark theme.
 - A minimal quick paste popup: search first, light section tabs, a flat list with image thumbnails, hover actions, right-click paste-as options, and pinned items on top. It opens as a native rounded Windows 11 flyout at the bottom center of your screen.
-- Keyboard-first: `↑`/`↓` to move, `Enter` to paste, `Ctrl+C` to copy, `Ctrl+P` to pin, `Tab` or `Alt+1-5` to switch sections in quick paste; `Ctrl+F` to search, `P` to pin, `Delete` to remove, and `Ctrl+N` for a new note in the main window.
+- Keyboard-first: `↑`/`↓` to move, `Enter` to paste, `Ctrl+C` to copy, `Ctrl+P` to pin, `Tab` or `Alt+1-5` to switch sections in quick paste; `Ctrl+F` to search, `P` to pin, `Delete` to remove, `Ctrl+A` to select all, and `Ctrl+N` for a new note in the main window.
+- Select multiple items (the checklist button, or Ctrl/Shift-click) to pin, copy, or delete them together; Shift-click selects a range and `Ctrl+A` selects everything shown.
+- Clear your history in one step from the list's **...** menu or **Settings -> Backup & data**, with the choice to keep pinned clips and notes. Cleared clips are also compacted out of the database file.
 - Default global shortcut: `Ctrl+Shift+V`.
 - Quiet automatic updates: ClipVault checks once a day, downloads signed updates in the background, and only shows a small "Update ready" card in the sidebar. Nothing is installed until you click Restart, and it can be turned off in Settings.
 - System tray menu for opening ClipVault, opening quick paste, pausing/resuming capture, opening Settings, and quitting.
@@ -77,7 +79,7 @@ The repository includes a root `LICENSE` file with the same all-rights-reserved 
 
 ## Install
 
-Download `ClipVault_1.1.0_x64-setup.exe` from the [latest release](https://github.com/AMIRSRAD/ClipVault/releases/latest) and run it. No administrator rights are needed; it installs for the current Windows user.
+Download `ClipVault_1.2.0_x64-setup.exe` from the [latest release](https://github.com/AMIRSRAD/ClipVault/releases/latest) and run it. No administrator rights are needed; it installs for the current Windows user.
 
 The installer:
 
@@ -93,8 +95,8 @@ You can change startup behavior any time in **Settings → Window → Launch on 
 ### Silent install
 
 ```powershell
-.\ClipVault_1.1.0_x64-setup.exe /S
-.\ClipVault_1.1.0_x64-setup.exe /S /D=D:\Apps\ClipVault   # custom folder; /D must be last
+.\ClipVault_1.2.0_x64-setup.exe /S
+.\ClipVault_1.2.0_x64-setup.exe /S /D=D:\Apps\ClipVault   # custom folder; /D must be last
 ```
 
 Silent installs create the Start Menu and desktop shortcuts and do not enable startup.
@@ -130,8 +132,8 @@ pnpm tauri build
 Release outputs are generated under:
 
 - `src-tauri/target/release/clipvault.exe`
-- `src-tauri/target/release/bundle/nsis/ClipVault_1.1.0_x64-setup.exe`
-- `src-tauri/target/release/bundle/msi/ClipVault_1.1.0_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/ClipVault_1.2.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/ClipVault_1.2.0_x64_en-US.msi`
 
 The app icon is generated from:
 

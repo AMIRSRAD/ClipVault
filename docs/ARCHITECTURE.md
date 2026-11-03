@@ -8,7 +8,9 @@ ClipVault is a Windows-first Tauri desktop app. Rust owns OS integration and per
 
 - `src/App.tsx` picks the window mode (main or quick paste) and owns the main shell state: current view, search, selection, capture pause, and toasts.
 - `src/components/Sidebar.tsx` is the navigation pane with the quick paste shortcut and capture status/pause toggle.
-- `src/components/ClipList.tsx` is the searchable, day-grouped list pane with keyboard navigation, filter chips, and the new-note split button.
+- `src/components/ClipList.tsx` is the searchable, day-grouped list pane with keyboard navigation, filter chips, the new-note split button, multi-select (checkboxes, Shift ranges, `Ctrl+A`), and the More menu with Clear history. Selection state lives in `App.tsx` and is pruned to the items currently shown, so nothing hidden can be deleted by accident.
+- `src/components/BulkPanel.tsx` replaces the preview pane while several items are selected and offers copy, pin/unpin, and delete for the whole selection.
+- `src/components/ConfirmDialog.tsx` is the modal used before destructive actions (deleting several items, clearing history). Its Cancel button is focused first and Esc cancels.
 - `src/components/DetailPanel.tsx` is the preview pane: command bar, preview/note editor, OCR, suggested actions, paste-as transforms, and tag editor.
 - `src/components/SettingsPanel.tsx` contains the Settings and About pages.
 - `src/components/QuickPaste.tsx` is the quick paste popup, used both as its own window and as an overlay in the main window. Design rules: search is the only boxed element, the list is flat (no card borders), metadata is one muted line, actions appear on hover, and the footer is a single line of hints. The window itself is undecorated with `shadow: true`, which gives it native Windows 11 rounded corners, border, and shadow.
@@ -54,6 +56,8 @@ Item kinds:
 - `text`
 - `image`
 - `note`
+
+Bulk operations (`delete_items`, `pin_items`, `clear_history`) run in one transaction and clean up tags and the search index. `clear_history` can keep pinned clips and notes, drops unused tags, and then checkpoints the WAL and runs `VACUUM` so removed clips don't linger in the file.
 
 Notes are manual saved snippets. They do not expire during normal retention pruning. Clipboard captures expire according to retention settings unless pinned.
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 - 2026-11-03
+
+### Added
+- Select multiple items: use the checklist button, or Ctrl/Shift-click. Shift-click selects a range and `Ctrl+A` selects everything shown. A bulk panel offers Copy text, Pin/Unpin, and Delete for the whole selection, and deleting several items asks for confirmation.
+- Clear history: from the list's **...** menu or **Settings -> Backup & data**, with options to keep pinned clips and notes. Cleared clips are also compacted out of the database file.
+
+### Changed
+- Bulk delete, pin, and clear run as single transactions that also clean up tags and the search index.
+
 ## 1.1.0 - 2026-11-03
 
 ### Added

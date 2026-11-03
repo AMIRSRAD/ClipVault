@@ -73,6 +73,34 @@ pub fn delete_item(state: State<'_, AppState>, id: String) -> Result<(), String>
 }
 
 #[tauri::command]
+pub fn delete_items(state: State<'_, AppState>, ids: Vec<String>) -> Result<usize, String> {
+    state
+        .storage
+        .delete_many(&ids)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn pin_items(state: State<'_, AppState>, ids: Vec<String>, pinned: bool) -> Result<(), String> {
+    state
+        .storage
+        .pin_many(&ids, pinned)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn clear_history(
+    state: State<'_, AppState>,
+    keep_pinned: bool,
+    keep_notes: bool,
+) -> Result<usize, String> {
+    state
+        .storage
+        .clear_history(keep_pinned, keep_notes)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub fn pin_item(state: State<'_, AppState>, id: String, pinned: bool) -> Result<(), String> {
     state
         .storage

@@ -2,9 +2,11 @@ import { Code2, ListChecks, Mail, NotebookPen, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   capturePaused,
+  clearHistory,
   closePalette,
   createNote,
   deleteItem,
+  deleteItems,
   getItem,
   getSettings,
   installUpdate,
@@ -12,12 +14,15 @@ import {
   pendingUpdate,
   pauseCapture,
   pinItem,
+  pinItems,
   resumeCapture,
   searchItems,
   setTags
 } from "./api";
+import { BulkPanel } from "./components/BulkPanel";
 import { ClipList, FilterChips, NewNoteButton } from "./components/ClipList";
-import type { NoteTemplate } from "./components/ClipList";
+import type { NoteTemplate, Selection } from "./components/ClipList";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import { DetailPanel } from "./components/DetailPanel";
 import { QuickPaste } from "./components/QuickPaste";
 import { InfoPanel, SettingsPanel } from "./components/SettingsPanel";
@@ -86,6 +91,13 @@ function MainShell() {
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [selectMode, setSelectMode] = useState(false);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [anchorId, setAnchorId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<"delete" | "clear" | null>(null);
+  const [keepPinned, setKeepPinned] = useState(true);
+  const [keepNotes, setKeepNotes] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null);
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
@@ -149,6 +161,14 @@ function MainShell() {
   }, [loadItems, query]);
 
   useEffect(() => {
+    setChecked((current) => {
+      const visible = new Set(items.map((item) => item.id));
+      const next = new Set([...current].filter((id) => visible.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [items]);
+
+  useEffect(() => {
     if (view === "tags") void refreshTags();
   }, [refreshTags, view]);
 
@@ -192,6 +212,9 @@ function MainShell() {
         event.preventDefault();
         setPaletteOpen(true);
       }
+      if (event.key === "Escape" && selectMode && !confirm) {
+        exitSelect();
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "n" && !event.shiftKey) {
         event.preventDefault();
         void handleCreateNote();
@@ -201,7 +224,101 @@ function MainShell() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
+  function exitSelect() {
+    setSelectMode(false);
+    setChecked(new Set());
+    setAnchorId(null);
+  }
+
+  function toggleChecked(id: string, range: boolean) {
+    setSelectMode(true);
+    setChecked((current) => {
+      const next = new Set(current);
+      const from = anchorId ? items.findIndex((item) => item.id === anchorId) : -1;
+      const to = items.findIndex((item) => item.id === id);
+      if (range && from >= 0 && to >= 0) {
+        for (let index = Math.min(from, to); index <= Math.max(from, to); index += 1) next.add(items[index].id);
+        return next;
+      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setAnchorId(id);
+  }
+
+  function selectAll() {
+    setSelectMode(true);
+    setChecked(new Set(items.map((item) => item.id)));
+  }
+
+  const checkedItems = items.filter((item) => checked.has(item.id));
+
+  async function deleteChecked() {
+    const ids = [...checked];
+    if (ids.length === 0) return;
+    setBusy(true);
+    try {
+      const removed = await deleteItems(ids);
+      await loadItems();
+      exitSelect();
+      showToast(`Deleted ${removed} ${removed === 1 ? "item" : "items"}`);
+    } catch {
+      showToast("Couldn't delete those items");
+    } finally {
+      setBusy(false);
+      setConfirm(null);
+    }
+  }
+
+  function requestDeleteChecked() {
+    if (checked.size >= 2) setConfirm("delete");
+    else void deleteChecked();
+  }
+
+  async function pinChecked(pinned: boolean) {
+    await pinItems([...checked], pinned);
+    await loadItems();
+    showToast(pinned ? "Pinned — these clips won't expire" : "Unpinned");
+  }
+
+  async function copyChecked() {
+    const text = checkedItems
+      .map((item) => item.text || item.ocrText || "")
+      .filter(Boolean)
+      .join("\n\n");
+    await navigator.clipboard?.writeText(text);
+    showToast(`Copied text from ${checkedItems.length} ${checkedItems.length === 1 ? "item" : "items"}`);
+  }
+
+  async function runClearHistory() {
+    setBusy(true);
+    try {
+      const removed = await clearHistory(keepPinned, keepNotes);
+      exitSelect();
+      await loadItems();
+      void refreshTags();
+      showToast(removed === 0 ? "Nothing to clear" : `Cleared ${removed} ${removed === 1 ? "item" : "items"}`);
+    } catch {
+      showToast("Couldn't clear history");
+    } finally {
+      setBusy(false);
+      setConfirm(null);
+    }
+  }
+
+  const selection: Selection = {
+    active: selectMode,
+    checked,
+    onToggle: toggleChecked,
+    onSelectAll: selectAll,
+    onStart: () => setSelectMode(true),
+    onDone: exitSelect,
+    onDeleteChecked: requestDeleteChecked
+  };
+
   function navigate(next: ViewKey) {
+    exitSelect();
     setView(next);
     if (next !== "tags") setSelectedTag(null);
     if (next !== "notes") setNoteCollection(null);
@@ -312,7 +429,7 @@ function MainShell() {
           </div>
         )}
         {view === "settings" ? (
-          settings && <SettingsPanel settings={settings} onChange={setSettings} onToast={showToast} update={update} onUpdateFound={setUpdate} />
+          settings && <SettingsPanel settings={settings} onChange={setSettings} onToast={showToast} update={update} onUpdateFound={setUpdate} onClearHistory={() => setConfirm("clear")} />
         ) : view === "info" ? (
           <InfoPanel update={update} onUpdateFound={setUpdate} onToast={showToast} />
         ) : (
@@ -331,19 +448,64 @@ function MainShell() {
               filterBar={filterBar}
               emptyMessage={viewMeta[view].empty}
               primaryAction={view === "notes" ? <NewNoteButton templates={noteTemplates} onCreate={handleCreateNote} /> : undefined}
+              selection={selection}
+              onClearHistory={() => setConfirm("clear")}
             />
-            <DetailPanel
-              item={selected}
-              onDelete={handleDelete}
-              onPin={handlePin}
-              onPaste={handlePaste}
-              onTagSave={handleTagSave}
-              onRefresh={refreshSelected}
-              onToast={showToast}
-            />
+            {selectMode ? (
+              checkedItems.length > 0 ? (
+                <BulkPanel items={checkedItems} onDelete={requestDeleteChecked} onPin={pinChecked} onCopy={copyChecked} onClear={() => setChecked(new Set())} />
+              ) : (
+                <section className="detail-pane">
+                  <div className="empty-state">
+                    <div className="empty-icon">
+                      <ListChecks size={22} />
+                    </div>
+                    <strong>Pick items to act on together</strong>
+                    <span>Click items to select them. Hold Shift to select a range, or press Ctrl+A for everything shown.</span>
+                  </div>
+                </section>
+              )
+            ) : (
+              <DetailPanel
+                item={selected}
+                onDelete={handleDelete}
+                onPin={handlePin}
+                onPaste={handlePaste}
+                onTagSave={handleTagSave}
+                onRefresh={refreshSelected}
+                onToast={showToast}
+              />
+            )}
           </div>
         )}
       </main>
+
+      {confirm === "delete" && (
+        <ConfirmDialog title={`Delete ${checked.size} items?`} confirmLabel="Delete" danger busy={busy} onConfirm={deleteChecked} onCancel={() => setConfirm(null)}>
+          <p>They'll be removed from this PC for good. This can't be undone.</p>
+        </ConfirmDialog>
+      )}
+
+      {confirm === "clear" && (
+        <ConfirmDialog
+          title="Clear clipboard history?"
+          confirmLabel={keepPinned || keepNotes ? "Clear history" : "Delete everything"}
+          danger
+          busy={busy}
+          onConfirm={runClearHistory}
+          onCancel={() => setConfirm(null)}
+        >
+          <p>This permanently removes your saved clips from this PC and can't be undone.</p>
+          <label className="check-row">
+            <input type="checkbox" checked={keepPinned} onChange={(event) => setKeepPinned(event.target.checked)} />
+            Keep pinned clips
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={keepNotes} onChange={(event) => setKeepNotes(event.target.checked)} />
+            Keep notes
+          </label>
+        </ConfirmDialog>
+      )}
 
       {toast && (
         <div className="toast" key={toast.id} role="status">

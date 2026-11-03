@@ -1,10 +1,20 @@
-import { ChevronDown, Clipboard, FileText, Image, NotebookPen, Pin, Plus, Search, X } from "lucide-react";
+import { Check, ChevronDown, Clipboard, FileText, Image, ListChecks, MoreHorizontal, NotebookPen, Pin, Plus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { groupByDay, looksLikeCode, previewText, relativeTime } from "../lib/clip";
 import type { ClipboardItem } from "../types";
 
 export type NoteTemplate = { label: string; icon: typeof Clipboard; tags: string[]; text: string };
+
+export type Selection = {
+  active: boolean;
+  checked: Set<string>;
+  onToggle: (id: string, range: boolean) => void;
+  onSelectAll: () => void;
+  onStart: () => void;
+  onDone: () => void;
+  onDeleteChecked: () => void;
+};
 
 export function ClipList({
   title,
@@ -19,7 +29,9 @@ export function ClipList({
   onTogglePin,
   filterBar,
   emptyMessage,
-  primaryAction
+  primaryAction,
+  selection,
+  onClearHistory
 }: {
   title: string;
   items: ClipboardItem[];
@@ -34,6 +46,8 @@ export function ClipList({
   filterBar?: ReactNode;
   emptyMessage: { title: string; body: string };
   primaryAction?: ReactNode;
+  selection: Selection;
+  onClearHistory: () => void;
 }) {
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -65,6 +79,28 @@ export function ClipList({
 
   function handleListKey(event: ReactKeyboardEvent) {
     const selected = items.find((item) => item.id === selectedId);
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      selection.onSelectAll();
+      return;
+    }
+    if (selection.active) {
+      if (event.key === " " && selected) {
+        event.preventDefault();
+        selection.onToggle(selected.id, event.shiftKey);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        selection.onDone();
+        return;
+      }
+      if (event.key === "Delete" && selection.checked.size > 0) {
+        event.preventDefault();
+        selection.onDeleteChecked();
+        return;
+      }
+    }
     if (event.key === "ArrowDown") {
       event.preventDefault();
       moveSelection(1);
@@ -104,13 +140,35 @@ export function ClipList({
 
   return (
     <section className="list-pane" aria-label={title}>
-      <header className="pane-header">
-        <div className="pane-title">
-          <h1>{title}</h1>
-          {!loading && <span className="count-badge">{items.length}</span>}
-        </div>
-        {primaryAction}
-      </header>
+      {selection.active ? (
+        <header className="pane-header selecting">
+          <div className="pane-title">
+            <h1>{selection.checked.size > 0 ? `${selection.checked.size} selected` : "Select items"}</h1>
+          </div>
+          <div className="header-actions">
+            <button className="button small" onClick={selection.onSelectAll} disabled={items.length === 0}>
+              {selection.checked.size === items.length && items.length > 0 ? "All selected" : "Select all"}
+            </button>
+            <button className="button small accent" onClick={selection.onDone}>
+              Done
+            </button>
+          </div>
+        </header>
+      ) : (
+        <header className="pane-header">
+          <div className="pane-title">
+            <h1>{title}</h1>
+            {!loading && <span className="count-badge">{items.length}</span>}
+          </div>
+          <div className="header-actions">
+            {primaryAction}
+            <button className="icon-button" onClick={selection.onStart} disabled={items.length === 0} title="Select multiple items" aria-label="Select multiple items">
+              <ListChecks size={17} />
+            </button>
+            <ListMenu onSelect={selection.onStart} onClearHistory={onClearHistory} canSelect={items.length > 0} />
+          </div>
+        </header>
+      )}
 
       <div className="search-field">
         <Search size={15} />
@@ -153,7 +211,16 @@ export function ClipList({
             <div className="clip-group" key={group.label}>
               <div className="group-label">{group.label}</div>
               {group.items.map((item) => (
-                <ClipRow key={item.id} item={item} selected={item.id === selectedId} onSelect={() => onSelect(item.id)} onPaste={() => onPaste(item)} />
+                <ClipRow
+                  key={item.id}
+                  item={item}
+                  selected={item.id === selectedId}
+                  selecting={selection.active}
+                  checked={selection.checked.has(item.id)}
+                  onSelect={() => onSelect(item.id)}
+                  onToggle={(range) => selection.onToggle(item.id, range)}
+                  onPaste={() => onPaste(item)}
+                />
               ))}
             </div>
           ))
@@ -163,20 +230,48 @@ export function ClipList({
   );
 }
 
-function ClipRow({ item, selected, onSelect, onPaste }: { item: ClipboardItem; selected: boolean; onSelect: () => void; onPaste: () => void }) {
+function ClipRow({
+  item,
+  selected,
+  selecting,
+  checked,
+  onSelect,
+  onToggle,
+  onPaste
+}: {
+  item: ClipboardItem;
+  selected: boolean;
+  selecting: boolean;
+  checked: boolean;
+  onSelect: () => void;
+  onToggle: (range: boolean) => void;
+  onPaste: () => void;
+}) {
   const Icon = item.kind === "image" ? Image : item.kind === "note" ? NotebookPen : FileText;
   const text = previewText(item);
   const code = item.kind !== "image" && looksLikeCode(text);
 
   return (
     <div
-      className={`clip-row${selected ? " selected" : ""}${item.kind === "note" ? " note" : ""}`}
+      className={`clip-row${selected ? " selected" : ""}${item.kind === "note" ? " note" : ""}${selecting ? " selecting" : ""}${checked ? " checked" : ""}`}
       data-id={item.id}
       role="option"
-      aria-selected={selected}
-      onClick={onSelect}
-      onDoubleClick={onPaste}
+      aria-selected={selecting ? checked : selected}
+      onClick={(event: ReactMouseEvent) => {
+        if (selecting || event.ctrlKey || event.metaKey || event.shiftKey) {
+          onSelect();
+          onToggle(event.shiftKey);
+          return;
+        }
+        onSelect();
+      }}
+      onDoubleClick={selecting ? undefined : onPaste}
     >
+      {selecting && (
+        <span className={checked ? "row-check on" : "row-check"} aria-hidden>
+          {checked && <Check size={13} strokeWidth={3} />}
+        </span>
+      )}
       {item.kind === "image" && item.imageUrl ? (
         <div className="clip-thumb">
           <img src={item.imageUrl} alt="" />
@@ -200,6 +295,52 @@ function ClipRow({ item, selected, onSelect, onPaste }: { item: ClipboardItem; s
         </div>
       </div>
       {item.pinned && <Pin className="clip-pin" size={13} aria-label="Pinned" />}
+    </div>
+  );
+}
+
+function ListMenu({ onSelect, onClearHistory, canSelect }: { onSelect: () => void; onClearHistory: () => void; canSelect: boolean }) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const closeOnEscape = (event: KeyboardEvent) => event.key === "Escape" && close();
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className="split-button">
+      <button
+        className="icon-button"
+        aria-label="More actions"
+        aria-expanded={open}
+        title="More actions"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((value) => !value);
+        }}
+      >
+        <MoreHorizontal size={17} />
+      </button>
+      {open && (
+        <div className="menu" role="menu">
+          <button role="menuitem" disabled={!canSelect} onClick={onSelect}>
+            <ListChecks size={14} />
+            Select items
+          </button>
+          <div className="menu-separator" />
+          <button role="menuitem" className="danger" onClick={onClearHistory}>
+            <Trash2 size={14} />
+            Clear history…
+          </button>
+        </div>
+      )}
     </div>
   );
 }
