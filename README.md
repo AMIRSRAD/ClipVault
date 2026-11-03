@@ -76,7 +76,7 @@ The repository includes a root `LICENSE` file with the same all-rights-reserved 
 
 ## Install
 
-Download `ClipVault_1.0.0_x64-setup.exe` from the [latest release](https://github.com/AMIRSRAD/ClipVault/releases/latest) and run it. No administrator rights are needed; it installs for the current Windows user.
+Download `ClipVault_1.0.1_x64-setup.exe` from the [latest release](https://github.com/AMIRSRAD/ClipVault/releases/latest) and run it. No administrator rights are needed; it installs for the current Windows user.
 
 The installer:
 
@@ -92,8 +92,8 @@ You can change startup behavior any time in **Settings → Window → Launch on 
 ### Silent install
 
 ```powershell
-.\ClipVault_1.0.0_x64-setup.exe /S
-.\ClipVault_1.0.0_x64-setup.exe /S /D=D:\Apps\ClipVault   # custom folder; /D must be last
+.\ClipVault_1.0.1_x64-setup.exe /S
+.\ClipVault_1.0.1_x64-setup.exe /S /D=D:\Apps\ClipVault   # custom folder; /D must be last
 ```
 
 Silent installs create the Start Menu and desktop shortcuts and do not enable startup.
@@ -129,8 +129,8 @@ pnpm tauri build
 Release outputs are generated under:
 
 - `src-tauri/target/release/clipvault.exe`
-- `src-tauri/target/release/bundle/nsis/ClipVault_1.0.0_x64-setup.exe`
-- `src-tauri/target/release/bundle/msi/ClipVault_1.0.0_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/ClipVault_1.0.1_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/ClipVault_1.0.1_x64_en-US.msi`
 
 The app icon is generated from:
 
@@ -155,6 +155,15 @@ If Cargo or native dependencies are not on PATH in PowerShell, prepend the local
 ```powershell
 $env:Path = "$env:USERPROFILE\.cargo\bin;C:\Strawberry\perl\bin;C:\Strawberry\c\bin;C:\Strawberry\perl\site\bin;$env:Path"
 ```
+
+## Performance
+
+ClipVault is built to sit in the system tray all day without costing you anything:
+
+- **Zero idle CPU.** The clipboard is watched through the Windows clipboard listener instead of polling, so the app sleeps until you actually copy something (0 wakeups per second when idle, about 0.05% CPU for the whole process tree).
+- **Low idle memory.** While a window is hidden, its web view is switched to WebView2's low-memory mode, which trims it to roughly 55-95 MB total in the tray (about 550 MB before 1.0.1). The normal level is restored when a window is shown.
+- **Instant quick paste.** Both windows stay loaded, so `Ctrl+Shift+V` shows the popup in a few milliseconds even after hours in the tray.
+- **Nothing runs in the background** besides the clipboard listener: no timers, no network, no telemetry.
 
 ## Roadmap
 

@@ -36,7 +36,8 @@ The quick paste popup groups saved notes separately from clipboard captures and 
 
 - `src-tauri/src/main.rs` configures Tauri, global shortcut handling, app state, and the clipboard watcher thread.
 - `src-tauri/src/commands.rs` exposes native commands to the frontend.
-- `src-tauri/src/clipboard.rs` handles Windows clipboard capture and paste simulation.
+- `src-tauri/src/clipboard.rs` handles Windows clipboard capture and paste simulation. Capture runs on one thread that owns a message-only window registered with `AddClipboardFormatListener`; it blocks in `GetMessageW` until `WM_CLIPBOARDUPDATE`, waits 120 ms for the source app to finish writing, then captures. If the listener can't be registered it falls back to a 650 ms sequence-number poll. Changes made while capture is paused are recorded and skipped, so they are not captured on resume.
+- `src-tauri/src/webview_memory.rs` switches a window's WebView2 to its low memory target (`ICoreWebView2_19::SetMemoryUsageTargetLevel`) whenever the window is hidden and back to normal right before it is shown. Every show/hide path in `main.rs` and `window_anim.rs` calls it.
 - `src-tauri/src/storage.rs` owns SQLite schema, migrations, encrypted storage, search, tags, notes, import/export, and retention pruning.
 - `src-tauri/src/privacy.rs` normalizes content, hashes entries, and suppresses likely sensitive values.
 - `src-tauri/src/ocr.rs` provides on-demand Windows OCR.
@@ -86,3 +87,16 @@ Current Windows integration includes:
 ## Push Notes
 
 Build artifacts, dependency folders, logs, and local app data are intentionally ignored. Commit source, config, docs, lockfiles, icons, and capability files.
+
+## Idle Performance
+
+Measured on Windows 11 with the app hidden in the tray (history of a few hundred items):
+
+| | 1.0.0 | 1.0.1 |
+| --- | --- | --- |
+| Wakeups per second (all processes) | ~2 | 0 |
+| CPU | ~0% | ~0.05% |
+| Total working set (ClipVault + WebView2) | ~545 MB | ~55-95 MB |
+| Quick paste popup appears | instant | 3-14 ms |
+
+Rules to keep it that way: no timers or polling in the React app or Rust backend, no animations running while hidden, and any new show/hide path must go through the helpers that call `webview_memory::set_background`.

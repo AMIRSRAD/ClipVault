@@ -12,8 +12,11 @@ use base64::Engine as _;
 use chrono::{DateTime, Utc};
 use image::{imageops::FilterType, DynamicImage, ImageBuffer, ImageFormat, Rgba};
 use tauri::AppHandle;
+use windows::core::w;
 use windows::Win32::Foundation::{CloseHandle, HWND};
-use windows::Win32::System::DataExchange::GetClipboardSequenceNumber;
+use windows::Win32::System::DataExchange::{
+    AddClipboardFormatListener, GetClipboardSequenceNumber, RemoveClipboardFormatListener,
+};
 use windows::Win32::System::Threading::{
     OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION,
 };
@@ -22,7 +25,10 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
     VIRTUAL_KEY, VK_CONTROL, VK_V,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId, IsWindow, SetForegroundWindow,
+    CreateWindowExW, DestroyWindow, DispatchMessageW, GetForegroundWindow, GetMessageW,
+    GetWindowTextW, GetWindowThreadProcessId, IsWindow, PeekMessageW, SetForegroundWindow,
+    TranslateMessage, HWND_MESSAGE, MSG, PM_REMOVE, WINDOW_EX_STYLE, WM_CLIPBOARDUPDATE,
+    WS_OVERLAPPED,
 };
 
 use crate::{
@@ -30,6 +36,13 @@ use crate::{
     privacy,
     storage::Storage,
 };
+
+const CLIPBOARD_SETTLE_MS: u64 = 120;
+
+struct WatchState {
+    last_sequence: u32,
+    clipboard: Option<Clipboard>,
+}
 
 pub struct ClipboardWatcher {
     storage: Arc<Storage>,
@@ -50,34 +63,114 @@ impl ClipboardWatcher {
         }
     }
 
+    /// Watches the clipboard until the process exits. Uses the Windows clipboard listener so the
+    /// thread sleeps until the clipboard changes; falls back to polling if that isn't available.
     pub fn run(self) {
-        let mut last_sequence = unsafe { GetClipboardSequenceNumber() };
-        let mut clipboard = Clipboard::new().ok();
+        let mut state = WatchState {
+            last_sequence: unsafe { GetClipboardSequenceNumber() },
+            clipboard: Clipboard::new().ok(),
+        };
 
+        if self.run_listener(&mut state).is_err() {
+            self.run_polling(&mut state);
+        }
+    }
+
+    fn run_listener(&self, state: &mut WatchState) -> Result<()> {
+        // A message-only window on a predefined class: it only exists to receive
+        // WM_CLIPBOARDUPDATE, which is posted to this thread's queue.
+        let hwnd = unsafe {
+            CreateWindowExW(
+                WINDOW_EX_STYLE(0),
+                w!("STATIC"),
+                w!("ClipVaultClipboardListener"),
+                WS_OVERLAPPED,
+                0,
+                0,
+                0,
+                0,
+                HWND_MESSAGE,
+                None,
+                None,
+                None,
+            )
+        }
+        .context("failed to create clipboard listener window")?;
+
+        if let Err(error) = unsafe { AddClipboardFormatListener(hwnd) } {
+            unsafe {
+                let _ = DestroyWindow(hwnd);
+            }
+            return Err(error).context("failed to register clipboard listener");
+        }
+
+        let mut message = MSG::default();
+        loop {
+            let result = unsafe { GetMessageW(&mut message, None, 0, 0) };
+            if result.0 <= 0 {
+                break;
+            }
+
+            if message.message != WM_CLIPBOARDUPDATE {
+                unsafe {
+                    let _ = TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
+                continue;
+            }
+
+            // Apps often update the clipboard in several steps; let them finish and collapse
+            // the burst into one capture.
+            std::thread::sleep(StdDuration::from_millis(CLIPBOARD_SETTLE_MS));
+            while unsafe {
+                PeekMessageW(
+                    &mut message,
+                    None,
+                    WM_CLIPBOARDUPDATE,
+                    WM_CLIPBOARDUPDATE,
+                    PM_REMOVE,
+                )
+            }
+            .as_bool()
+            {}
+
+            self.handle_change(state);
+        }
+
+        unsafe {
+            let _ = RemoveClipboardFormatListener(hwnd);
+            let _ = DestroyWindow(hwnd);
+        }
+        Ok(())
+    }
+
+    fn run_polling(&self, state: &mut WatchState) {
         loop {
             std::thread::sleep(StdDuration::from_millis(650));
-            if self.is_paused() {
-                continue;
-            }
+            self.handle_change(state);
+        }
+    }
 
-            let sequence = unsafe { GetClipboardSequenceNumber() };
-            if sequence == last_sequence {
-                continue;
-            }
-            last_sequence = sequence;
+    fn handle_change(&self, state: &mut WatchState) {
+        let sequence = unsafe { GetClipboardSequenceNumber() };
+        if sequence == state.last_sequence {
+            return;
+        }
+        // Record the change even when it is skipped, so copies made while capture is paused
+        // aren't picked up the moment it resumes.
+        state.last_sequence = sequence;
 
-            if clipboard_marked_excluded() {
-                continue;
-            }
+        if self.is_paused() || clipboard_marked_excluded() {
+            return;
+        }
 
-            if clipboard.is_none() {
-                clipboard = Clipboard::new().ok();
-            }
+        if state.clipboard.is_none() {
+            state.clipboard = Clipboard::new().ok();
+        }
 
-            if let Some(clipboard) = clipboard.as_mut() {
-                let _ = self.capture_text(clipboard);
-                let _ = self.capture_image(clipboard);
-            }
+        if let Some(clipboard) = state.clipboard.as_mut() {
+            let _ = self.capture_text(clipboard);
+            let _ = self.capture_image(clipboard);
         }
     }
 
@@ -234,7 +327,6 @@ impl ClipboardContent {
 
 /// Password managers set this format to ask clipboard managers not to record the content.
 fn clipboard_marked_excluded() -> bool {
-    use windows::core::w;
     use windows::Win32::System::DataExchange::{
         IsClipboardFormatAvailable, RegisterClipboardFormatW,
     };

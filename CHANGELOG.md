@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1 — 2026-11-03
+
+Idle performance release.
+
+### Changed
+- The clipboard is now watched with the Windows clipboard listener instead of a 650 ms poll, so the app has zero wakeups while idle and captures copies about half a second sooner.
+- Hidden windows run WebView2 in its low-memory mode, cutting memory in the tray from about 545 MB to roughly 55-95 MB. The popup still opens in a few milliseconds.
+
+### Fixed
+- Anything copied while capture was paused was saved the moment capture resumed. It is now skipped.
+
 ## 1.0.0 — 2026-11-03
 
 First stable release.

@@ -58,6 +58,14 @@ pnpm tauri build
 - Pause and resume capture from the sidebar and confirm the banner appears and clears.
 - Enable launch on startup, sign out and back in, and confirm ClipVault starts hidden in the tray.
 
+## Idle Performance Check
+
+Run the installed build hidden in the tray (start it with `--minimized`), wait a minute, and confirm:
+
+- ClipVault and its `msedgewebview2.exe` children use about 0% CPU and 0 context switches per second (for example with `Win32_PerfRawData_PerfProc_Process` sampled twice 60 seconds apart).
+- Total working set settles under about 100 MB.
+- `Ctrl+Shift+V` still shows the popup immediately and Esc hides it.
+
 ## Release Outputs
 
 Tauri writes Windows release outputs to:

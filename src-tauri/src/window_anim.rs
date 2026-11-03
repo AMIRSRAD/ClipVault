@@ -6,9 +6,11 @@ pub fn hide(window: &WebviewWindow, duration_ms: u32) {
     if let Ok(hwnd) = window.hwnd() {
         let hwnd = HWND(hwnd.0 as _);
         if unsafe { AnimateWindow(hwnd, duration_ms, AW_BLEND | AW_HIDE) }.is_ok() {
+            crate::webview_memory::set_background(window, true);
             return;
         }
     }
 
     let _ = window.hide();
+    crate::webview_memory::set_background(window, true);
 }

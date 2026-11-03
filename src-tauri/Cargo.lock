@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "clipvault"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "arboard",
@@ -536,7 +536,9 @@ dependencies = [
  "tauri-plugin-single-instance",
  "thiserror 1.0.69",
  "uuid",
+ "webview2-com",
  "windows 0.58.0",
+ "windows-core 0.61.2",
  "winreg 0.52.0",
 ]
 

@@ -8,6 +8,7 @@ mod models;
 mod ocr;
 mod privacy;
 mod storage;
+mod webview_memory;
 mod window_anim;
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -113,6 +114,10 @@ pub fn run() {
             if settings.start_minimized || launched_minimized {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.hide();
+                    webview_memory::set_background(&window, true);
+                }
+                if let Some(window) = app.get_webview_window("palette") {
+                    webview_memory::set_background(&window, true);
                 }
             }
 
@@ -136,6 +141,9 @@ pub fn run() {
                         api.prevent_close();
                         clear_main_show_grace(window.app_handle());
                         let _ = window.hide();
+                        if let Some(webview) = window.app_handle().get_webview_window("main") {
+                            webview_memory::set_background(&webview, true);
+                        }
                     }
                 }
 
@@ -293,6 +301,7 @@ fn show_main_window(app: &AppHandle) {
 
 pub(crate) fn show_main_window_handle(app: &AppHandle, window: &WebviewWindow) {
     mark_main_show_grace(app);
+    webview_memory::set_background(window, false);
     let _ = window.unminimize();
     let _ = window.show();
     let _ = window.set_always_on_top(true);
@@ -317,6 +326,7 @@ fn retry_show_palette(app: &AppHandle, generation: u64) {
 }
 
 fn show_palette_window(window: &WebviewWindow) {
+    webview_memory::set_background(window, false);
     let _ = window.unminimize();
     let _ = window.set_always_on_top(true);
     position_palette_bottom_center(window);
@@ -340,6 +350,7 @@ pub(crate) fn hide_palette_window(app: &AppHandle, duration_ms: u32) {
 
         if let Some(window) = app_handle.get_webview_window("palette") {
             let _ = window.hide();
+            webview_memory::set_background(&window, true);
         }
     });
 }
