@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0 - 2026-11-18
+
+### Added
+- Multi-paste in the quick paste popup. Select several text items and paste them together in the order you picked them. Hover a row to reveal its checkbox, or press `Space`, `Shift`+arrows, or `Ctrl`/`Shift`-click. The footer shows how many are selected, a **Join** menu (new line, blank line, space, comma, nothing; remembered), **Clear**, and **Paste N**. `Enter` pastes the selection, `Ctrl+C` copies it, and `Esc` clears it.
+- `?view=` option for the browser demo build, used for documentation screenshots.
+
+### Changed
+- The README is reorganised into three parts: a plain-language guide with screenshots for people who just want to use ClipVault, a technical explanation, and getting started / building from source.
+- New screenshots (main window, Notes, Settings, and the popup in dark, light, and multi-select) using everyday sample data.
+- The popup's footer hints now show `Space Select`.
+
 ## 1.2.0 - 2026-11-03
 
 ### Added

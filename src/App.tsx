@@ -59,6 +59,14 @@ function filtersForView(view: ViewKey, tag: string | null, noteCollection: strin
   return { kind: "all" };
 }
 
+const viewKeys: ViewKey[] = ["all", "pinned", "text", "images", "notes", "tags", "settings", "info"];
+
+/** Lets a link such as `?view=notes` open a specific page (used for documentation screenshots). */
+function initialView(): ViewKey {
+  const requested = new URLSearchParams(window.location.search).get("view");
+  return viewKeys.find((key) => key === requested) ?? "all";
+}
+
 function App() {
   const [windowMode, setWindowMode] = useState<"main" | "palette">("main");
 
@@ -80,7 +88,7 @@ function App() {
 }
 
 function MainShell() {
-  const [view, setView] = useState<ViewKey>("all");
+  const [view, setView] = useState<ViewKey>(initialView);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<ClipboardItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);

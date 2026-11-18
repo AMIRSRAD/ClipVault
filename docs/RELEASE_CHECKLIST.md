@@ -59,8 +59,13 @@ pnpm tauri build
 - Open the quick paste popup in light and dark mode; confirm rounded corners, search focus, tab switching with `Tab`, hover actions, and pinning with `Ctrl+P`.
 - Open Settings -> Updates and use **Check now**.
 - Select several items (checklist button, Shift-click range, `Ctrl+A`), then pin, copy, and delete them; confirm the delete dialog appears and Esc cancels it.
+- In the quick paste popup, select three text items (`Space`, hover checkbox, `Ctrl`-click), change **Join**, press `Enter`, and confirm they paste in pick order into Notepad; confirm images can't be selected and `Esc` clears the selection first.
 - Use **...** -> **Clear history** with both keep options ticked and confirm pinned clips and notes remain; repeat with both unticked.
 - Enable launch on startup, sign out and back in, and confirm ClipVault starts hidden in the tray.
+
+## README Screenshots
+
+The README images in `docs/assets/` are rendered from the browser demo build with its built-in sample data (`pnpm dev`, then open `http://localhost:1420/`). Use `?view=notes` or `?view=settings` for other pages and `?palette` for the popup at a 370x540 viewport. Regenerate them when the UI changes, and never use real clipboard contents.
 
 ## Idle Performance Check
 

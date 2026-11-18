@@ -26,13 +26,17 @@ Main views:
 - Library: Notes, Tags.
 - Footer: Settings, About.
 
-The About view displays creator, website, and license ownership details:
+The About view shows the version, update status, and creator, website, and license details. Opening the browser demo with `?view=notes`, `?view=settings`, etc. jumps straight to a page (used for documentation screenshots):
 
 - Creator: Amirsalar Saberi rad.
 - Website: `https://amirsrad.ir`.
 - License: all rights reserved by Amirsalar Saberi rad.
 
-The quick paste popup groups saved notes separately from clipboard captures and uses local fuzzy reranking over a recent item pool for typo-tolerant search.
+The quick paste popup shows pinned items first, then recent ones, and uses local fuzzy reranking over a recent item pool for typo-tolerant search.
+
+### Multi-paste in the popup
+
+Text clips and notes can be selected in the popup (hover checkbox, click or `Space`, `Ctrl`/`Shift`-click, or `Shift`+arrows). Selection is an ordered list that survives tab switches and searches and is reset each time the popup opens; images are not selectable because they can't be joined. `Enter` (or the **Paste N** button) joins the selected clips' text in pick order with the chosen separator (new line, blank line, space, comma, or nothing; remembered in `localStorage`) and sends one `paste_text` call, so no backend change is needed. `Ctrl+C` copies the joined text, and `Esc` clears the selection before it clears the search or closes the popup.
 
 ## Native Backend
 

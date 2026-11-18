@@ -1,186 +1,391 @@
+<div align="center">
+
+<img src="src/assets/clipvault-icon.png" alt="ClipVault icon" width="84">
+
 # ClipVault
 
-[![Latest release](https://img.shields.io/github/v/release/AMIRSRAD/ClipVault)](https://github.com/AMIRSRAD/ClipVault/releases/latest) ![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
+**Windows only remembers the last thing you copied. ClipVault remembers everything, and keeps it private.**
 
-ClipVault is a modern lightweight Windows clipboard manager with encrypted local history, saved note snippets, OCR, smart preview actions, and a fast Windows-style quick-paste popup.
+[![Latest release](https://img.shields.io/github/v/release/AMIRSRAD/ClipVault?label=latest%20release)](https://github.com/AMIRSRAD/ClipVault/releases/latest) ![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4) ![Encrypted on your PC](https://img.shields.io/badge/data-encrypted%20%26%20local-2ea44f)
 
-It captures text and images, gives you a fast `Ctrl+Shift+V` quick paste popup, lets you save reusable notes/snippets, and keeps all content local.
+[**Part 1: For everyone**](#part-1-for-everyone) &nbsp;·&nbsp; [**Part 2: How it works**](#part-2-how-it-works-technical) &nbsp;·&nbsp; [**Part 3: Build it yourself**](#part-3-getting-started-and-building)
 
-## Screenshots
+<br>
 
-![ClipVault main window with example clipboard items](docs/assets/main-window.png)
+<img src="docs/assets/main-window.png" alt="ClipVault main window showing a searchable history of copied items" width="900">
+
+</div>
+
+<br>
+
+---
+
+# Part 1: For everyone
+
+*No technical knowledge needed. If you just want to use ClipVault, this is the only part you need.*
+
+## What is ClipVault?
+
+Every time you copy something on your computer (a sentence, a link, an address, a picture), Windows puts it on a hidden shelf called the **clipboard**. The catch: the shelf holds **only one thing**. Copy something new and the old one is gone.
+
+**ClipVault fixes that.** It quietly remembers everything you copy, so you can bring any of it back later: the address you copied yesterday, the link from this morning, the screenshot you took an hour ago. Press one shortcut, pick what you want, and it is pasted right where you are typing.
+
+It lives in the background (look for the small icon near the clock), uses very little battery or memory, and **everything stays on your own PC, locked with encryption.** There is no account, no cloud, and no tracking.
+
+## What can I do with it?
+
+| | |
+| --- | --- |
+| **Never lose a copy** | Text and images you copy are saved automatically and kept for 30 days (you can change that). |
+| **Paste from anywhere** | Press `Ctrl` + `Shift` + `V` in any app to open a small popup, then click what you want. |
+| **Paste several things at once** | Tick a few items in the popup and paste them all in one go, in the order you picked. |
+| **Find anything fast** | Search by words, app name, or tag. It even finds text inside screenshots. |
+| **Keep the things you reuse** | Pin items so they never expire, or write your own notes and templates (meeting notes, to-do lists, email replies). |
+| **Tidy up as you paste** | Paste as plain text, one line, UPPERCASE, Title Case, or neatly formatted JSON. |
+| **Stay in control** | Pause it any time, delete one item or everything, and tell it to ignore certain apps. |
+
+## Download and install
+
+You need **Windows 10 or 11 (64-bit)**. You do **not** need an administrator password.
+
+1. Open the **[latest release page](https://github.com/AMIRSRAD/ClipVault/releases/latest)**.
+2. Under **Assets**, click **`ClipVault_1.3.0_x64-setup.exe`** to download it.
+3. Open the downloaded file.
+   - Windows may show a blue box saying *"Windows protected your PC"*. That happens for any newer program that isn't from a big publisher. Click **More info**, then **Run anyway**.
+4. Click through the installer. Two questions are worth a look:
+   - **Create a desktop shortcut?** Optional.
+   - **Start ClipVault when you sign in to Windows?** We recommend **Yes**. ClipVault can only remember what you copy while it is running, and it starts quietly in the background.
+5. Finished. Look for the ClipVault icon in the system tray (bottom-right of the screen, near the clock; it may be behind the small `^` arrow).
+
+**Updating** is automatic and quiet; see [Updates](#updates). **Uninstalling:** open **Settings → Apps → Installed apps**, find **ClipVault**, and choose **Uninstall**. You can tick a box to delete your saved history too.
+
+## A quick tour
+
+### Your history, always searchable
+
+Everything you copy appears in one list (see the screenshot at the top), grouped by day, with a preview of the selected item on the right. Click an item to see it in full, copy it again, paste it, pin it, tag it, or delete it. Images show a thumbnail, and for screenshots you can pull out the text with one click. Smart suggestions appear when they make sense: open a link, format JSON, or open a file's folder.
+
+### Paste from anywhere with one shortcut
+
+Press **`Ctrl` + `Shift` + `V`** in any app. A small popup appears at the bottom of the screen with your most recent items. Type to search, use the arrow keys, and press **Enter** (or just click) to paste into whatever you were typing in. Press **Esc** to close it.
 
 <p align="center">
-  <img src="docs/assets/quick-paste-popup.png" alt="ClipVault quick paste popup with example items" width="370">
+  <img src="docs/assets/quick-paste-popup.png" alt="The quick paste popup in dark mode" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/assets/quick-paste-light.png" alt="The quick paste popup in light mode" width="300">
 </p>
 
-Screenshots use sample data. The interface follows your Windows light/dark setting.
+ClipVault follows your Windows **light or dark** setting automatically.
 
-## Features
+### Paste several things at once
 
-- Text and image clipboard history.
-- Searchable timeline with source metadata, tags, pins, and SQLite FTS indexing.
-- Windows 11 (Fluent) style interface that follows the system light/dark theme.
-- A minimal quick paste popup: search first, light section tabs, a flat list with image thumbnails, hover actions, right-click paste-as options, and pinned items on top. It opens as a native rounded Windows 11 flyout at the bottom center of your screen.
-- Keyboard-first: `↑`/`↓` to move, `Enter` to paste, `Ctrl+C` to copy, `Ctrl+P` to pin, `Tab` or `Alt+1-5` to switch sections in quick paste; `Ctrl+F` to search, `P` to pin, `Delete` to remove, `Ctrl+A` to select all, and `Ctrl+N` for a new note in the main window.
-- Select multiple items (the checklist button, or Ctrl/Shift-click) to pin, copy, or delete them together; Shift-click selects a range and `Ctrl+A` selects everything shown.
-- Clear your history in one step from the list's **...** menu or **Settings -> Backup & data**, with the choice to keep pinned clips and notes. Cleared clips are also compacted out of the database file.
-- Default global shortcut: `Ctrl+Shift+V`.
-- Quiet automatic updates: ClipVault checks once a day, downloads signed updates in the background, and only shows a small "Update ready" card in the sidebar. Nothing is installed until you click Restart, and it can be turned off in Settings.
-- System tray menu for opening ClipVault, opening quick paste, pausing/resuming capture, opening Settings, and quitting.
-- Window behavior settings for close-to-tray, minimize-to-tray, start minimized, and launch on Windows startup (starts hidden in the tray).
-- Polished Windows window behavior with no console window, tray-first close/minimize support, and stable reopen behavior.
-- Dedicated Info tab for creator, website, and license ownership details.
-- Notes as saved snippets, stored in the same encrypted item system as clipboard entries.
-- Saved snippet collections backed by tags: work, code, emails, prompts, and personal.
-- Favorite note templates: meeting note, todo, code snippet, prompt, and email reply.
-- On-demand local OCR for copied screenshots and image clips using Windows native OCR APIs.
-- Smart preview actions for detected content:
-  - open URL
-  - copy domain
-  - format JSON
-  - beautify code
-  - extract emails
-  - open Windows file path
-- Paste transformations for text: plain, trim, no line breaks, upper/lower/title case, JSON prettify, and JSON minify.
-- Privacy controls for capture pause/resume (sidebar or tray), excluded apps/window titles, sensitive-value suppression, and retention.
-- Clipboard restore after quick paste for text and images when the prior clipboard content can be read.
-- Encrypted import/export for settings, notes, and pinned clips.
-- Custom app icon for the title bar, taskbar, tray, installer, and in-app branding.
+Need to paste three things into one email? Hover over an item and tick its box (or press **Space**) to select it. Select as many as you like, then press **Enter** or click **Paste**. They are pasted together in the order you picked them, with a new line between each (you can switch that to a space, comma, or blank line with **Join**).
 
-## Tech Stack
+<p align="center">
+  <img src="docs/assets/quick-paste-multi.png" alt="Quick paste with four items selected and a Paste 4 button" width="300">
+</p>
 
-- Tauri 2
-- React 18
-- TypeScript
-- Vite
-- Rust
-- SQLite with SQLCipher
-- Windows DPAPI for protecting local encryption material and backup payloads
-- Windows clipboard, global shortcut, paste simulation, and OCR integrations
+Pictures can't be joined into text, so they are greyed out while you are selecting.
 
-## Creator And License
+### Notes you can reuse
 
-- Creator: Amirsalar Saberi rad
-- Website: [amirsrad.ir](https://amirsrad.ir)
-- License: Copyright Amirsalar Saberi rad. All rights reserved.
+Save things you paste again and again: a standard email reply, an address, a checklist. Notes never expire. Start from a template (meeting notes, to-do list, code snippet, prompt, email reply) or from a blank page, and group them with tags such as *work*, *emails*, or *personal*.
 
-The repository includes a root `LICENSE` file with the same all-rights-reserved ownership notice.
+<p align="center">
+  <img src="docs/assets/notes.png" alt="The Notes page with a groceries note open" width="860">
+</p>
 
-## Requirements
+### Select, pin, and clean up
 
-- Windows 10/11.
-- Node.js 20+.
-- pnpm 10.16.1 (Corepack reads the pinned version from `package.json`).
-- Rust and Cargo through rustup.
-- Microsoft C++ Build Tools.
-- Microsoft Edge WebView2 runtime.
-- Strawberry Perl, used by the vendored OpenSSL build for SQLCipher. Put `C:\Strawberry\perl\bin` before Git's Perl in `PATH`; Git's Cygwin Perl fails to build OpenSSL.
+Click the checklist button above the list (or hold **Ctrl** / **Shift** while clicking) to select many items at once. You can then copy their text, pin them, or delete them together. The **…** menu has **Clear history**, which asks first and lets you keep pinned items and notes.
 
-## Install
+### Settings you actually understand
 
-Download `ClipVault_1.2.0_x64-setup.exe` from the [latest release](https://github.com/AMIRSRAD/ClipVault/releases/latest) and run it. No administrator rights are needed; it installs for the current Windows user.
+Choose how long to keep history, which apps to ignore, the shortcut, and whether ClipVault starts with Windows. Every setting has a plain-English description.
 
-The installer:
+<p align="center">
+  <img src="docs/assets/settings.png" alt="The Settings page" width="860">
+</p>
 
-- Shows the license, lets you pick the install folder (default `%LOCALAPPDATA%\ClipVault`), and installs the WebView2 runtime if your PC doesn't have it.
-- Creates a Start Menu shortcut. On the last page you can tick **Create a desktop shortcut** and **Run ClipVault**.
-- Asks whether to start ClipVault when you sign in to Windows. If you say yes, it starts quietly in the system tray.
-- Registers ClipVault in **Settings → Apps → Installed apps** so Windows can uninstall it. The uninstaller can also delete your saved history and key.
+## Keyboard cheat sheet
 
-Upgrading is just running a newer installer (or clicking **Restart** on the in-app update card); your history, notes, and settings are kept.
+**Anywhere in Windows**
 
-You can change startup behavior any time in **Settings → Window → Launch on Windows startup**. The installer is unsigned, so Windows SmartScreen may show a reputation warning; choose **More info → Run anyway**. An MSI is also published for managed deployments.
+| Keys | What it does |
+| --- | --- |
+| `Ctrl` `Shift` `V` | Open the quick paste popup (you can change this in Settings) |
 
-### Silent install
+**In the quick paste popup**
 
-```powershell
-.\ClipVault_1.2.0_x64-setup.exe /S
-.\ClipVault_1.2.0_x64-setup.exe /S /D=D:\Apps\ClipVault   # custom folder; /D must be last
+| Keys | What it does |
+| --- | --- |
+| `↑` `↓` | Move through the list |
+| `Enter` | Paste the highlighted item (or all selected items) |
+| `Space` | Select / unselect the highlighted item for multi-paste |
+| `Shift` + `↑` `↓` | Select a run of items |
+| `Ctrl` + `C` | Copy the highlighted item (or all selected items) without pasting |
+| `Ctrl` + `P` | Pin / unpin |
+| `Delete` | Remove the highlighted item |
+| `Tab` or `Alt` + `1`…`5` | Switch between All, Text, Images, Notes, Pinned |
+| `Esc` | Clear the selection, then clear the search, then close |
+| Right-click | More options, including **Paste as…** |
+
+**In the main window**
+
+| Keys | What it does |
+| --- | --- |
+| `Ctrl` `F` | Search |
+| `Enter` / `P` / `Delete` | Paste / pin / delete the selected item |
+| `Ctrl` `A` | Select everything shown |
+| `Ctrl` / `Shift` + click | Select several items (Shift selects a range) |
+| `Ctrl` `N` | New note |
+
+## Privacy and safety
+
+- **It stays on your PC.** Your history is never uploaded anywhere. There is no account, no cloud, and no tracking.
+- **It is encrypted.** Your history is stored in an encrypted file that is locked to your Windows account. Another person (or another Windows user on the same PC) can't read it.
+- **It skips sensitive things.** By default ClipVault does not save text that looks like a password, API key, access token, private key, or card number. It also respects password managers that mark what they copy as private, and you can tell it to ignore specific apps or window titles.
+- **You are in control.** Pause capture with one click (sidebar or tray icon), delete any item, or clear everything. History is automatically removed after 30 days (pinned items and notes are kept), and you can change that.
+- **The only internet use** is a small once-a-day check on GitHub to see whether a newer version exists. You can turn it off.
+
+## Updates
+
+ClipVault keeps itself up to date without getting in your way:
+
+- Once a day it checks GitHub for a newer version. If there is one, it is downloaded quietly in the background and checked to make sure it really came from the author.
+- You are **never interrupted**: no pop-ups, no sounds, no notifications. A small **Update ready** card appears at the bottom of the sidebar. Click **Restart** when it suits you, or ignore it.
+- **Settings → Updates** lets you check right now or turn automatic downloads off. Your history is never touched by an update.
+
+## Frequently asked questions
+
+**Does it remember things when it is closed?**
+No. ClipVault only saves what you copy while it is running. That is why starting it with Windows is recommended.
+
+**Where is my data stored?**
+In `%LOCALAPPDATA%\ClipVault\ClipVault\data` on your PC (paste that into the File Explorer address bar to open it). Uninstalling can remove it for you.
+
+**Will it slow my computer down?**
+No. When you aren't copying anything it does nothing at all (no background polling) and it stays small in memory, roughly the same as a single browser tab.
+
+**I copied a password and it isn't in my history. Is something wrong?**
+No, that is on purpose. See [Privacy and safety](#privacy-and-safety). You can switch this off in **Settings → Capture → Skip sensitive values**.
+
+**How do I stop it saving something for a moment?**
+Click the pause button in the sidebar (or choose **Pause capture** from the tray icon). Anything you copy while paused is skipped, even after you resume.
+
+**Can I use it on Mac, Linux, or my phone?**
+Not yet. ClipVault is Windows-only for now.
+
+**Windows showed a warning when I installed it.**
+That is Windows being cautious about newer programs without a paid publisher certificate. Choose **More info → Run anyway**.
+
+**It didn't start with Windows.**
+Open **Settings → Window** inside ClipVault and switch on **Launch on Windows startup**.
+
+---
+
+# Part 2: How it works (technical)
+
+*For developers, reviewers, and the curious. The deeper reference is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).*
+
+## Overview
+
+ClipVault is a Windows-first desktop app built with **Tauri 2**. Rust owns everything that touches the operating system or disk; a React single-page app renders two windows (the main window and the quick paste popup) inside WebView2.
+
+```
+ ┌──────────────────────── WebView2 (one webview per window) ────────────────────────┐
+ │   Main window  (src/App.tsx + components)     Quick paste popup  (QuickPaste.tsx) │
+ └───────────────────────────────▲───────────────────────────────▲───────────────────┘
+                                 │  invoke() commands  +  events (Tauri IPC)
+ ┌───────────────────────────────┴───────────────────────────────┴───────────────────┐
+ │ Rust backend                                                                       │
+ │  clipboard.rs   storage.rs   privacy.rs   crypto.rs   ocr.rs   updater.rs   main.rs│
+ └──────┬───────────────┬──────────────────┬───────────────┬──────────────┬──────────┘
+        │ Win32         │ SQLCipher        │ DPAPI         │ WinRT OCR    │ HTTPS
+  clipboard listener  encrypted SQLite   key protection  Windows.Media.Ocr  GitHub Releases
+  SendInput (paste)   + FTS5 search      for key + backups                  (signed updates)
 ```
 
-Silent installs create the Start Menu and desktop shortcuts and do not enable startup.
+## Tech stack
 
-### Build from source
+| Layer | Technology | Notes |
+| --- | --- | --- |
+| App shell | Tauri 2 | Small native shell, tray icon, single-instance, global shortcut, updater plugins |
+| Backend | Rust (2021 edition) | `windows` crate for Win32/WinRT, `arboard` for clipboard data, `image` for PNG/thumbnail encoding |
+| Frontend | React 18, TypeScript, Vite 5 | No UI framework; hand-written Fluent-style CSS with light/dark design tokens |
+| Storage | SQLite via `rusqlite` + SQLCipher | Vendored OpenSSL; FTS5 for search |
+| Key protection | Windows DPAPI | Key and backup payloads are bound to the Windows user |
+| OCR | `Windows.Media.Ocr` | Local, on demand, no model downloads |
+| Updates | `tauri-plugin-updater` + minisign | Signed releases from GitHub |
+| Installer | NSIS (per-user) and MSI | WebView2 bootstrapper embedded |
+| CI | GitHub Actions (Windows) | Build, rustfmt, clippy, tests |
+
+## Capturing the clipboard
+
+1. A dedicated thread owns a message-only window registered with `AddClipboardFormatListener` and blocks in `GetMessageW`. When the clipboard changes Windows posts `WM_CLIPBOARDUPDATE`; between changes the thread is asleep (zero wakeups).
+2. It waits 120 ms for the source app to finish writing, collapses bursts into one event, then compares `GetClipboardSequenceNumber()` with the last seen value. If the listener can't be registered it falls back to a 650 ms sequence-number poll.
+3. Capture is skipped when capture is paused (the change is still recorded, so nothing copied during a pause appears on resume), when the source app or window title is on the ignore list, when the clipboard carries `ExcludeClipboardContentFromMonitorProcessing` (set by password managers), when the content is too large (512 KB of text, 8 MB of image), or when it looks sensitive.
+4. Surviving content is normalised and hashed with SHA-256 for de-duplication. Images are encoded to PNG with a thumbnail (up to 420×260). Everything is written to the encrypted database and added to the full-text index.
+
+"Looks sensitive" covers private-key blocks, `password=` / `token: …` / JSON-style secrets, well-known token prefixes (`ghp_`, `sk-`, `AKIA`, …), JWTs, bearer tokens, Luhn-valid card numbers, and long random strings. Details and tests live in `src-tauri/src/privacy.rs`.
+
+## Pasting
+
+Paste (`paste_item`, `paste_text`) remembers the foreground window before the popup opened, briefly pauses capture so ClipVault doesn't record its own paste, places the content on the clipboard, restores focus to the target, sends `Ctrl+V` with `SendInput`, then restores the previous text or image clipboard on a best-effort basis. Multi-paste in the popup joins the selected text in the browser and sends one `paste_text` call.
+
+## Data and encryption
+
+- One SQLCipher database (`clipvault.db`, WAL mode) under `%LOCALAPPDATA%\ClipVault\ClipVault\data`.
+- Tables: `clipboard_items` (text, images, notes), `items_fts` (FTS5 index over text, OCR text, tags, source app and title), `tags`, `item_tags`, `settings`.
+- The database key is 32 bytes from the OS random number generator, protected with Windows DPAPI for the current user and stored beside the database. Existing keys keep working across upgrades.
+- Retention pruning removes expired, unpinned captures (and enforces the storage cap); notes and pinned items are exempt.
+- Bulk delete, pin and "clear history" run in single transactions; clearing also checkpoints the WAL and runs `VACUUM` so deleted clips don't linger in the file.
+- Backups export settings, notes and pinned clips as a `clipvault-dpapi-v1:` payload protected with DPAPI, so they restore only for the same Windows user.
+
+## Windows integration
+
+Global shortcut (default `Ctrl+Shift+V`), tray menu (open, quick paste, settings, pause/resume, quit), single-instance relaunch, close-to-tray and minimize-to-tray, optional launch at sign-in through the per-user `Run` key (`--minimized` starts hidden in the tray), native dragging of the popup, and ShellExecute for opening links and paths.
+
+The popup window is undecorated with `shadow: true`, which gives it native Windows 11 rounded corners, border and shadow. Its Tauri capability set is intentionally smaller than the main window's.
+
+## Performance
+
+ClipVault is designed to be invisible while idle. Measured on Windows 11 with the app hidden in the tray:
+
+| Metric | Result |
+| --- | --- |
+| Wakeups per second (all processes) | 0 |
+| CPU | ≈ 0.05 % |
+| Total working set (ClipVault + WebView2) | ≈ 55–95 MB |
+| Quick paste popup appears | 3–14 ms |
+
+How: event-driven clipboard listener (no polling), both windows stay loaded so the popup is instant, hidden windows switch WebView2 to its low-memory mode (`ICoreWebView2_19::SetMemoryUsageTargetLevel`) and are restored right before being shown, and the update check is a sleeping 24-hour timer.
+
+## Auto-update and signing
+
+`tauri-plugin-updater` fetches `releases/latest/download/latest.json` (a manifest with the version, notes, installer URL and minisign signature). A background task checks 60 s after launch and then every 24 h, downloads a newer installer into memory, verifies its signature against the public key compiled into the app, and surfaces an "Update ready" card. The installer only runs when the user clicks **Restart** (NSIS passive mode, which relaunches the app). The private signing key never lives in the repository. See [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+
+## Repository layout
+
+```
+src/                     React frontend
+  App.tsx                window mode + main shell state
+  components/            Sidebar, ClipList, DetailPanel, BulkPanel, QuickPaste, SettingsPanel, ConfirmDialog
+  lib/clip.ts            pure helpers: formatting, detection, paste transforms, fuzzy search
+  api.ts, types.ts       typed wrappers over Tauri commands (+ browser demo fallbacks)
+  mockData.ts            sample data for running the UI without Tauri
+  styles.css             design tokens (light/dark) and all styles
+src-tauri/               Rust backend
+  src/                   clipboard, storage, privacy, crypto, ocr, updater, webview_memory, commands, main
+  capabilities/          per-window Tauri permissions
+  windows/               NSIS hooks and installer artwork
+  tauri.conf.json        windows, bundle, installer, and updater configuration
+scripts/                 make-update-manifest.mjs (builds latest.json for releases)
+docs/                    ARCHITECTURE.md, RELEASE_CHECKLIST.md, screenshots
+.github/workflows/       CI
+```
+
+---
+
+# Part 3: Getting started and building
+
+> **A note on the license.** ClipVault's source is published for transparency and review. It is released under an all-rights-reserved license (see [License](#license)): copying, modifying, distributing or using it requires the author's written permission. These instructions are for the maintainer, for people who have that permission, and for anyone checking how releases are built.
+
+## What you need
+
+| Tool | Version / notes |
+| --- | --- |
+| Windows | 10 or 11 (64-bit) |
+| Node.js | 20 or newer |
+| pnpm | 10.16.1 (run `corepack enable` and it picks the pinned version from `package.json`) |
+| Rust | stable, installed with [rustup](https://rustup.rs) |
+| Microsoft C++ Build Tools | "Desktop development with C++" workload |
+| WebView2 runtime | Already on Windows 11 and current Windows 10 |
+| Strawberry Perl | Needed to compile the vendored OpenSSL behind SQLCipher |
+
+> **Perl gotcha:** put `C:\Strawberry\perl\bin` **before** Git's Perl in `PATH`. Git for Windows ships a Cygwin Perl that cannot configure OpenSSL, and the build fails with `Configure` errors. In PowerShell:
+>
+> ```powershell
+> $env:Path = "C:\Strawberry\perl\bin;C:\Strawberry\c\bin;$env:USERPROFILE\.cargo\bin;$env:Path"
+> ```
+
+## Get the code and install dependencies
 
 ```powershell
+git clone https://github.com/AMIRSRAD/ClipVault.git
+cd ClipVault
 corepack enable
 pnpm install --frozen-lockfile
 ```
 
-## Development
+## Run it
 
-Run the frontend only:
+**Just the interface in a browser** (fast; uses built-in sample data, no Windows features):
 
 ```powershell
 pnpm dev
 ```
 
-Run the full Tauri desktop app:
+Open <http://localhost:1420>. Add `?palette` to the address to see the quick paste popup, or `?view=notes` / `?view=settings` to jump to a page.
+
+**The full desktop app** (real clipboard, tray, shortcut, encryption):
 
 ```powershell
 pnpm tauri dev
 ```
 
-## Build
+The first run compiles the Rust backend and takes several minutes; later runs are fast.
+
+## Build the installers
 
 ```powershell
-pnpm build
 pnpm tauri build
 ```
 
-Release outputs are generated under:
+Outputs:
 
 - `src-tauri/target/release/clipvault.exe`
-- `src-tauri/target/release/bundle/nsis/ClipVault_1.2.0_x64-setup.exe`
-- `src-tauri/target/release/bundle/msi/ClipVault_1.2.0_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/ClipVault_<version>_x64-setup.exe` (per-user installer)
+- `src-tauri/target/release/bundle/msi/ClipVault_<version>_x64_en-US.msi`
 
-The app icon is generated from:
-
-- `src-tauri/icons/icon-source.png`
-- `src-tauri/icons/icon.ico`
-- `src/assets/clipvault-icon.png`
-
-## Verification
-
-Use these before cutting a Windows release:
+`createUpdaterArtifacts` is on, so the build also produces `.sig` files. That requires the signing key in two environment variables, and the build stops with a clear error without them:
 
 ```powershell
-pnpm build
-cargo test --manifest-path src-tauri/Cargo.toml
-cargo fmt --manifest-path src-tauri/Cargo.toml --check
+$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content "path\to\clipvault.key" -Raw
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "your key password"
+```
+
+To try a build without release signing, turn that off for the one build (PowerShell needs the inner quotes escaped):
+
+```powershell
+pnpm tauri build --config '{\"bundle\":{\"createUpdaterArtifacts\":false}}'
+```
+
+## Check your changes
+
+```powershell
+pnpm build                                   # TypeScript check + production frontend build
+cargo test   --manifest-path src-tauri/Cargo.toml
+cargo fmt    --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
-pnpm tauri build
 ```
 
-If Cargo or native dependencies are not on PATH in PowerShell, prepend the local toolchain paths first:
+The same checks run in GitHub Actions on every push and pull request.
 
-```powershell
-$env:Path = "$env:USERPROFILE\.cargo\bin;C:\Strawberry\perl\bin;C:\Strawberry\c\bin;C:\Strawberry\perl\site\bin;$env:Path"
-```
+## Cutting a release
 
-## Updates
-
-ClipVault updates itself without getting in the way:
-
-- Once a day (and a minute after launch) it asks GitHub for the latest release. The check is a single small request and is skipped if you turn off **Settings -> Updates -> Download updates automatically**.
-- If a newer version exists, it is downloaded in the background and its signature is verified against the public key built into the app. Updates that aren't signed by the maintainer are rejected.
-- You are never interrupted: no pop-ups, no sounds, no tray notifications. A small **Update ready** card appears in the sidebar; click **Restart** when it suits you, or dismiss it. **Settings** and **About** also have a **Check now** button.
-- Installing shows a short progress window, then ClipVault reopens. Your history is untouched.
-
-## Performance
-
-ClipVault is built to sit in the system tray all day without costing you anything:
-
-- **Zero idle CPU.** The clipboard is watched through the Windows clipboard listener instead of polling, so the app sleeps until you actually copy something (0 wakeups per second when idle, about 0.05% CPU for the whole process tree).
-- **Low idle memory.** While a window is hidden, its web view is switched to WebView2's low-memory mode, which trims it to roughly 55-95 MB total in the tray (about 550 MB before 1.0.1). The normal level is restored when a window is shown.
-- **Instant quick paste.** Both windows stay loaded, so `Ctrl+Shift+V` shows the popup in a few milliseconds even after hours in the tray.
-- **Nothing else runs in the background** besides the clipboard listener and the once-a-day update check (a sleeping timer, so no idle wakeups). No telemetry.
+Releases are signed and published as GitHub releases with a `latest.json` manifest. The step-by-step process, including the smoke-test list, is in [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
 
 ## Roadmap
 
 - Clipboard restore after paste for more content formats.
-- Tray menu polish.
-- Export/import UX refinements and cross-machine backup options.
+- Export/import refinements and cross-machine backup options.
 - Optional Tesseract OCR fallback.
-- End-to-end encrypted PC/Android sync, keeping Android clipboard platform limits in mind.
+- End-to-end encrypted PC/Android sync, keeping Android clipboard limits in mind.
+
+## Creator and license
+
+- Creator: **Amirsalar Saberi rad** · [amirsrad.ir](https://amirsrad.ir)
+- License: Copyright © 2026 Amirsalar Saberi rad. **All rights reserved.** See [`LICENSE`](LICENSE).
+
+Screenshots in this README use sample data.
