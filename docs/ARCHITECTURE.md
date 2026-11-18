@@ -14,6 +14,7 @@ ClipVault is a Windows-first Tauri desktop app. Rust owns OS integration and per
 - `src/components/DetailPanel.tsx` is the preview pane: command bar, preview/note editor, OCR, suggested actions, paste-as transforms, and tag editor.
 - `src/components/SettingsPanel.tsx` contains the Settings and About pages.
 - `src/components/QuickPaste.tsx` is the quick paste popup, used both as its own window and as an overlay in the main window. Design rules: search is the only boxed element, the list is flat (no card borders), metadata is one muted line, actions appear on hover, and the footer is a single line of hints. The window itself is undecorated with `shadow: true`, which gives it native Windows 11 rounded corners, border, and shadow.
+- `src/lib/theme.ts` stores the System/Light/Dark choice in `localStorage`, sets `data-theme` on `<html>`, and keeps the main window and popup in sync through the `storage` event. `styles.css` applies the light tokens either through `prefers-color-scheme` (unless `data-theme="dark"`) or `data-theme="light"`.
 - `src/lib/clip.ts` holds pure helpers: formatting, content detection, paste transforms, fuzzy ranking, and day grouping.
 - `src/api.ts` wraps Tauri commands and browser-demo fallbacks.
 - `src/types.ts` defines shared frontend models.
@@ -30,7 +31,7 @@ The About view shows the version, update status, and creator, website, and licen
 
 - Creator: Amirsalar Saberi rad.
 - Website: `https://amirsrad.ir`.
-- License: all rights reserved by Amirsalar Saberi rad.
+- License: free to use; source published for review (see `LICENSE`).
 
 The quick paste popup shows pinned items first, then recent ones, and uses local fuzzy reranking over a recent item pool for typo-tolerant search.
 
@@ -77,7 +78,7 @@ Backup export/import uses a `clipvault-dpapi-v1:` text payload. It includes sett
 
 ## Ownership And Licensing
 
-ClipVault is proprietary software owned by Amirsalar Saberi rad. The root `LICENSE` file is the source of truth for repository licensing and currently states that all rights are reserved.
+ClipVault is owned by Amirsalar Saberi rad and is free to use. The root `LICENSE` file is the source of truth: anyone may download, install, and use the app (personally or commercially) and share the unmodified official installer; the source is published for review and personal builds, and distributing modified versions or reselling needs written permission. The same text is shown on the installer's license page.
 
 ## OS Integration
 

@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { version } from "../../package.json";
 import clipvaultIcon from "../assets/clipvault-icon.png";
 import { checkForUpdate, exportBackup, getSettings, importBackup, installUpdate, openExternal, updateSettings } from "../api";
+import { getTheme, setTheme } from "../lib/theme";
+import type { ThemeChoice } from "../lib/theme";
 import type { AppSettings, UpdateInfo } from "../types";
 
 export function SettingsPanel({
@@ -81,6 +83,12 @@ export function SettingsPanel({
           </SettingRow>
         </SettingsGroup>
 
+        <SettingsGroup title="Appearance">
+          <SettingRow label="Theme" description="Follows your Windows setting unless you pick one.">
+            <ThemePicker />
+          </SettingRow>
+        </SettingsGroup>
+
         <SettingsGroup title="Privacy">
           <SettingRow label="Ignored apps" description="One process name per line, e.g. 1Password.exe." stacked>
             <ListField value={settings.excludedApps} onCommit={(value) => patch({ excludedApps: value })} placeholder="KeePassXC.exe" />
@@ -137,6 +145,35 @@ export function SettingsPanel({
         </SettingsGroup>
       </div>
     </section>
+  );
+}
+
+const themeOptions: Array<{ key: ThemeChoice; label: string }> = [
+  { key: "system", label: "System" },
+  { key: "light", label: "Light" },
+  { key: "dark", label: "Dark" }
+];
+
+function ThemePicker() {
+  const [choice, setChoice] = useState<ThemeChoice>(getTheme);
+
+  return (
+    <div className="segmented" role="radiogroup" aria-label="Theme">
+      {themeOptions.map((option) => (
+        <button
+          key={option.key}
+          role="radio"
+          aria-checked={choice === option.key}
+          className={choice === option.key ? "on" : ""}
+          onClick={() => {
+            setTheme(option.key);
+            setChoice(option.key);
+          }}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -327,7 +364,7 @@ export function InfoPanel({ update, onUpdateFound, onToast }: { update: UpdateIn
             </button>
           </SettingRow>
           <SettingRow label="License">
-            <span className="setting-value">Copyright Amirsalar Saberi rad. All rights reserved.</span>
+            <span className="setting-value">Free to use. Copyright © 2026 Amirsalar Saberi rad.</span>
           </SettingRow>
         </SettingsGroup>
       </div>

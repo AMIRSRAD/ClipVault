@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0 - 2026-11-18
+
+### Added
+- Appearance setting (Settings -> Appearance): choose System, Light, or Dark. The choice applies to the main window and the quick paste popup and is remembered.
+
+### Changed
+- ClipVault is now free to use. The new `LICENSE` lets anyone download, install, and use the app (personally or commercially) and share the unmodified official installer; the source stays published for review and personal builds, and distributing modified versions or reselling needs written permission. The installer's license page, About page, and package metadata were updated to match.
+- README: added light-mode and multi-select screenshots, refreshed the Settings screenshot, and updated the license notes.
+- Browser demo build: `?theme=` and `?select=` options for documentation screenshots.
+
 ## 1.3.0 - 2026-11-18
 
 ### Added

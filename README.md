@@ -6,7 +6,7 @@
 
 **Windows only remembers the last thing you copied. ClipVault remembers everything, and keeps it private.**
 
-[![Latest release](https://img.shields.io/github/v/release/AMIRSRAD/ClipVault?label=latest%20release)](https://github.com/AMIRSRAD/ClipVault/releases/latest) ![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4) ![Encrypted on your PC](https://img.shields.io/badge/data-encrypted%20%26%20local-2ea44f)
+[![Latest release](https://img.shields.io/github/v/release/AMIRSRAD/ClipVault?label=latest%20release)](https://github.com/AMIRSRAD/ClipVault/releases/latest) ![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4) ![Encrypted on your PC](https://img.shields.io/badge/data-encrypted%20%26%20local-2ea44f) ![Free to use](https://img.shields.io/badge/price-free-2ea44f)
 
 [**Part 1: For everyone**](#part-1-for-everyone) &nbsp;·&nbsp; [**Part 2: How it works**](#part-2-how-it-works-technical) &nbsp;·&nbsp; [**Part 3: Build it yourself**](#part-3-getting-started-and-building)
 
@@ -30,7 +30,7 @@ Every time you copy something on your computer (a sentence, a link, an address, 
 
 **ClipVault fixes that.** It quietly remembers everything you copy, so you can bring any of it back later: the address you copied yesterday, the link from this morning, the screenshot you took an hour ago. Press one shortcut, pick what you want, and it is pasted right where you are typing.
 
-It lives in the background (look for the small icon near the clock), uses very little battery or memory, and **everything stays on your own PC, locked with encryption.** There is no account, no cloud, and no tracking.
+It lives in the background (look for the small icon near the clock), uses very little battery or memory, and **everything stays on your own PC, locked with encryption.** There is no account, no cloud, and no tracking. **ClipVault is free for everyone to use**, at home or at work.
 
 ## What can I do with it?
 
@@ -49,7 +49,7 @@ It lives in the background (look for the small icon near the clock), uses very l
 You need **Windows 10 or 11 (64-bit)**. You do **not** need an administrator password.
 
 1. Open the **[latest release page](https://github.com/AMIRSRAD/ClipVault/releases/latest)**.
-2. Under **Assets**, click **`ClipVault_1.3.0_x64-setup.exe`** to download it.
+2. Under **Assets**, click **`ClipVault_1.4.0_x64-setup.exe`** to download it.
 3. Open the downloaded file.
    - Windows may show a blue box saying *"Windows protected your PC"*. That happens for any newer program that isn't from a big publisher. Click **More info**, then **Run anyway**.
 4. Click through the installer. Two questions are worth a look:
@@ -75,7 +75,11 @@ Press **`Ctrl` + `Shift` + `V`** in any app. A small popup appears at the bottom
   <img src="docs/assets/quick-paste-light.png" alt="The quick paste popup in light mode" width="300">
 </p>
 
-ClipVault follows your Windows **light or dark** setting automatically.
+ClipVault follows your Windows **light or dark** setting automatically. Prefer one or the other? Choose **System, Light, or Dark** under **Settings → Appearance**.
+
+<p align="center">
+  <img src="docs/assets/main-window-light.png" alt="The main window in light mode" width="860">
+</p>
 
 ### Paste several things at once
 
@@ -99,9 +103,13 @@ Save things you paste again and again: a standard email reply, an address, a che
 
 Click the checklist button above the list (or hold **Ctrl** / **Shift** while clicking) to select many items at once. You can then copy their text, pin them, or delete them together. The **…** menu has **Clear history**, which asks first and lets you keep pinned items and notes.
 
+<p align="center">
+  <img src="docs/assets/main-select.png" alt="Three items selected, with Copy text, Pin, and Delete actions" width="860">
+</p>
+
 ### Settings you actually understand
 
-Choose how long to keep history, which apps to ignore, the shortcut, and whether ClipVault starts with Windows. Every setting has a plain-English description.
+Choose how long to keep history, which apps to ignore, the shortcut, the theme, and whether ClipVault starts with Windows. Every setting has a plain-English description.
 
 <p align="center">
   <img src="docs/assets/settings.png" alt="The Settings page" width="860">
@@ -289,7 +297,7 @@ docs/                    ARCHITECTURE.md, RELEASE_CHECKLIST.md, screenshots
 
 # Part 3: Getting started and building
 
-> **A note on the license.** ClipVault's source is published for transparency and review. It is released under an all-rights-reserved license (see [License](#license)): copying, modifying, distributing or using it requires the author's written permission. These instructions are for the maintainer, for people who have that permission, and for anyone checking how releases are built.
+> **A note on the license.** ClipVault is free to use, and the source is published so anyone can read it, check what it does, and build it for their own use. Distributing modified versions or reselling it needs the author's written permission. The full terms are in [`LICENSE`](LICENSE).
 
 ## What you need
 
@@ -326,7 +334,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open <http://localhost:1420>. Add `?palette` to the address to see the quick paste popup, or `?view=notes` / `?view=settings` to jump to a page.
+Open <http://localhost:1420>. Add `?palette` to the address to see the quick paste popup, `?view=notes` / `?view=settings` to jump to a page, `?theme=light` or `?theme=dark` to force a theme, and `?select=0,2,3` to open with those rows ticked.
 
 **The full desktop app** (real clipboard, tray, shortcut, encryption):
 
@@ -386,6 +394,6 @@ Releases are signed and published as GitHub releases with a `latest.json` manife
 ## Creator and license
 
 - Creator: **Amirsalar Saberi rad** · [amirsrad.ir](https://amirsrad.ir)
-- License: Copyright © 2026 Amirsalar Saberi rad. **All rights reserved.** See [`LICENSE`](LICENSE).
+- License: **free to use** (personal or commercial), source available for review and personal builds; modified redistribution and resale need permission. Copyright © 2026 Amirsalar Saberi rad. See [`LICENSE`](LICENSE).
 
 Screenshots in this README use sample data.

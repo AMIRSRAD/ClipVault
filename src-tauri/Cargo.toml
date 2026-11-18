@@ -1,9 +1,9 @@
 [package]
 name = "clipvault"
-version = "1.3.0"
+version = "1.4.0"
 description = "A modern lightweight clipboard history manager for Windows."
 authors = ["Amirsalar Saberi rad"]
-license = "UNLICENSED"
+license-file = "../LICENSE"
 edition = "2021"
 
 [build-dependencies]

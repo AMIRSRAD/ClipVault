@@ -1,9 +1,9 @@
 {
   "name": "clipvault",
   "private": true,
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": "Amirsalar Saberi rad",
-  "license": "UNLICENSED",
+  "license": "SEE LICENSE IN LICENSE",
   "packageManager": "pnpm@10.16.1",
   "type": "module",
   "scripts": {

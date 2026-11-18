@@ -168,6 +168,17 @@ function MainShell() {
     return () => window.clearTimeout(timer);
   }, [loadItems, query]);
 
+  const demoSelectApplied = useRef(false);
+  useEffect(() => {
+    // Browser demo only: ?select=0,2,3 opens with those rows ticked (documentation screenshots).
+    if (isTauriRuntime() || demoSelectApplied.current || items.length === 0) return;
+    const spec = new URLSearchParams(window.location.search).get("select");
+    if (!spec) return;
+    demoSelectApplied.current = true;
+    setSelectMode(true);
+    setChecked(new Set(spec.split(",").map((index) => items[Number(index)]?.id).filter((id): id is string => Boolean(id))));
+  }, [items]);
+
   useEffect(() => {
     setChecked((current) => {
       const visible = new Set(items.map((item) => item.id));

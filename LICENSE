@@ -1,9 +1,46 @@
-Copyright (c) 2026 Amirsalar Saberi rad
+ClipVault License
 
-All rights reserved.
+Copyright (c) 2026 Amirsalar Saberi rad. All rights reserved except as expressly
+granted below.
 
-This software and its source code are the property of Amirsalar Saberi rad.
-No permission is granted to copy, modify, distribute, sublicense, or use this
-software except with prior written permission from Amirsalar Saberi rad.
+1. FREE TO USE
 
-Website: https://amirsrad.ir
+   Permission is granted, free of charge, to any person or organisation to
+   download, install, and use the ClipVault application (the "Software") on any
+   number of computers, for personal, educational, or commercial purposes.
+
+   You may share unmodified copies of the official installer, exactly as
+   published at https://github.com/AMIRSRAD/ClipVault/releases, with other
+   people, provided you do not charge for it and you keep this license with it.
+
+2. SOURCE CODE
+
+   The source code is published for transparency, security review, and
+   learning. You may read it, build the Software from it for your own use, and
+   suggest changes through issues and pull requests.
+
+   Except as stated above, you may not, without prior written permission from
+   the author:
+
+   - distribute modified versions or derivative works of the Software;
+   - sell, rent, or sublicense the Software or its source code;
+   - remove or alter copyright notices; or
+   - use the ClipVault name or icon in a way that suggests your own version is
+     the official one or is endorsed by the author.
+
+3. CONTRIBUTIONS
+
+   If you submit a contribution (for example a pull request), you grant the
+   author a perpetual, worldwide, royalty-free, irrevocable license to use,
+   modify, and distribute it as part of the Software.
+
+4. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+   CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+Website and contact: https://amirsrad.ir
